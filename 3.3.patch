@@ -1,0 +1,44 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..accd70e 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useRef } from 'react';
++import React, { useState, useRef, useEffect } from 'react';
+ import {
+   Home,
+   Compass,
+@@ -163,6 +163,20 @@ const initialPhotos: Photo[] = [
+ 
+ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+ 
++const STORAGE_KEY = 'pixelhub_photos';
++
++const getInitialPhotos = (): Photo[] => {
++  const stored = localStorage.getItem(STORAGE_KEY);
++  if (stored) {
++    try {
++      return JSON.parse(stored);
++    } catch {
++      return initialPhotos;
++    }
++  }
++  return initialPhotos;
++};
++
+ export default function App() {
+   const [darkMode, setDarkMode] = useState(false);
+   const [currentPage, setCurrentPage] = useState('home');
+@@ -170,7 +184,11 @@ export default function App() {
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
++  const [photos, setPhotos] = useState<Photo[]>(getInitialPhotos);
++
++  useEffect(() => {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
++  }, [photos]);
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+ 
