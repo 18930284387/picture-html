@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Home,
   Compass,
@@ -166,11 +166,24 @@ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('isLoggedIn') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [photos, setPhotos] = useState<Photo[]>(() => {
+    try {
+      const saved = localStorage.getItem('photos');
+      return saved ? JSON.parse(saved) : initialPhotos;
+    } catch {
+      return initialPhotos;
+    }
+  });
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
 
@@ -197,6 +210,18 @@ export default function App() {
   const [replyText, setReplyText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('photos', JSON.stringify(photos));
+    } catch {}
+  }, [photos]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('isLoggedIn', String(isLoggedIn));
+    } catch {}
+  }, [isLoggedIn]);
 
   const toggleLike = (photoId: number) => {
     setPhotos(photos.map(p => {
