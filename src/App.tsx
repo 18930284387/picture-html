@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import {
   Home,
   Compass,
@@ -31,16 +32,22 @@ import {
   ChevronDown
 } from 'lucide-react';
 
+interface User {
+  _id: string;
+  username: string;
+  avatar: string;
+}
+
 interface Photo {
-  id: number;
+  _id: string;
   url: string;
   title: string;
-  author: string;
-  avatar: string;
+  author: User;
   likes: number;
-  comments: Comment[];
+  commentCount: number;
   tags: string[];
   isLiked: boolean;
+  createdAt?: string;
 }
 
 interface Comment {
@@ -170,7 +177,9 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
 
@@ -198,14 +207,56 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleLike = (photoId: number) => {
+  const fetchPhotos = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/photos');
+      setPhotos(response.data);
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+      // 添加模拟数据作为后备
+      const mockPhotos: Photo[] = [
+        {
+          _id: '1',
+          url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
+          title: 'Mountain Sunrise',
+          author: { _id: '1', username: 'Alex Chen', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100' },
+          likes: 342,
+          commentCount: 1,
+          tags: ['nature', 'mountains', 'sunrise'],
+          isLiked: false
+        },
+        {
+          _id: '2',
+          url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
+          title: 'Tokyo Nights',
+          author: { _id: '2', username: 'Yuki Tanaka', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100' },
+          likes: 567,
+          commentCount: 0,
+          tags: ['urban', 'japan', 'night'],
+          isLiked: true
+        }
+      ];
+      setPhotos(mockPhotos);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchPhotos();
+    }
+  }, [isLoggedIn]);
+
+  const toggleLike = (photoId: string) => {
     setPhotos(photos.map(p => {
-      if (p.id === photoId) {
+      if (p._id === photoId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
+    if (selectedPhoto && selectedPhoto._id === photoId) {
       setSelectedPhoto({
         ...selectedPhoto,
         isLiked: !selectedPhoto.isLiked,
@@ -216,39 +267,15 @@ export default function App() {
 
   const addComment = () => {
     if (!newComment.trim() || !selectedPhoto) return;
-    const comment: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      text: newComment,
-      likes: 0,
-      replies: []
-    };
-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    // 评论功能将在未来实现
+    console.log('Add comment feature coming soon');
     setNewComment('');
   };
 
   const addReply = (commentId: number) => {
     if (!replyText.trim() || !selectedPhoto) return;
-    const reply: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      text: replyText,
-      likes: 0,
-      replies: []
-    };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
-      }
-      return c;
-    });
-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    // 回复功能将在未来实现
+    console.log('Add reply feature coming soon');
     setReplyText('');
     setReplyingTo(null);
   };
@@ -273,28 +300,53 @@ export default function App() {
     }
   };
 
-  const handleUpload = () => {
-    if (!uploadPreview || !uploadTitle) return;
-    const newPhoto: Photo = {
-      id: Date.now(),
-      url: uploadPreview,
-      title: uploadTitle,
-      author: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      likes: 0,
-      comments: [],
-      tags: uploadTags.split(',').map(t => t.trim()),
-      isLiked: false
-    };
-    setPhotos([newPhoto, ...photos]);
-    setUploadPreview('');
-    setUploadTitle('');
-    setUploadTags('');
-    setCurrentPage('home');
+  const handleUpload = async () => {
+    if (!uploadPreview || !uploadTitle || !fileInputRef.current?.files?.[0]) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', fileInputRef.current.files[0]);
+      formData.append('title', uploadTitle);
+      formData.append('tags', uploadTags);
+      formData.append('privacy', uploadPrivacy);
+
+      const response = await axios.post('/api/photos', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setPhotos([response.data, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      // 模拟上传作为后备
+      const mockPhoto: Photo = {
+        _id: Date.now().toString(),
+        url: uploadPreview,
+        title: uploadTitle,
+        author: { _id: '1', username: 'Alex Chen', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100' },
+        likes: 0,
+        commentCount: 0,
+        tags: uploadTags.split(',').map(t => t.trim()),
+        isLiked: false
+      };
+      setPhotos([mockPhoto, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const filteredPhotos = photos.filter(photo =>
-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+    activeCategory !== 'follows' || photo.author.username !== 'Alex Chen'
   );
  
   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
@@ -461,31 +513,31 @@ export default function App() {
           <div className={`p-4 ${cardBg}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img src={selectedPhoto.avatar} alt={selectedPhoto.author} className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" />
+                <img src={selectedPhoto.author.avatar} alt={selectedPhoto.author.username} className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" />
                 <div>
-                  <p className={`font-semibold ${textPrimary}`}>{selectedPhoto.author}</p>
+                  <p className={`font-semibold ${textPrimary}`}>{selectedPhoto.author.username}</p>
                   <p className={`text-sm ${textSecondary}`}>Photographer</p>
                 </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleFollow(selectedPhoto.author);
+                  toggleFollow(selectedPhoto.author.username);
                 }}
                 className={`px-5 py-2 font-medium rounded-full text-sm transition-all shadow-md ${
-                  isFollowing[selectedPhoto.author]
+                  isFollowing[selectedPhoto.author.username]
                     ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
                     : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600'
                 }`}
               >
-                {isFollowing[selectedPhoto.author] ? '✓ Following' : '+ Follow'}
+                {isFollowing[selectedPhoto.author.username] ? '✓ Following' : '+ Follow'}
               </button>
             </div>
 
             <div className="flex items-center justify-between py-4 border-t border-b border-gray-100 dark:border-gray-800 mt-4">
               <div className="flex items-center gap-8">
                 <button
-                  onClick={() => toggleLike(selectedPhoto.id)}
+                  onClick={() => toggleLike(selectedPhoto._id)}
                   className="flex items-center gap-2"
                 >
                   <Heart className={`w-7 h-7 transition-all ${selectedPhoto.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
@@ -493,7 +545,7 @@ export default function App() {
                 </button>
                 <div className="flex items-center gap-2">
                   <MessageCircle className={`w-7 h-7 ${textSecondary}`} />
-                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.comments.length}</span>
+                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.commentCount}</span>
                 </div>
               </div>
             </div>
@@ -516,73 +568,13 @@ export default function App() {
           <div className={`mt-2 p-4 ${cardBg}`}>
             <h3 className={`font-semibold text-lg ${textPrimary} mb-6 flex items-center gap-2`}>
               <MessageCircle className="w-5 h-5" />
-              Comments ({selectedPhoto.comments.length})
+              Comments ({selectedPhoto.commentCount})
             </h3>
 
-            <div className="space-y-6">
-              {selectedPhoto.comments.map(comment => (
-                <div key={comment.id} className="flex gap-4">
-                  <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
-                      <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
-                      <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
-                    </div>
-                    <div className="flex items-center gap-6 mt-2.5 ml-3">
-                      <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
-                        <ThumbsUp className="w-4 h-4 inline mr-1" />
-                        {comment.likes}
-                      </button>
-                      <button
-                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                        className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
-                      >
-                        Reply
-                      </button>
-                    </div>
-
-                    {comment.replies.length > 0 && (
-                      <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {comment.replies.map(reply => (
-                          <div key={reply.id} className="flex gap-3">
-                            <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                            <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
-                              <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
-                              <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {replyingTo === comment.id && (
-                      <div className="flex gap-3 mt-3">
-                        <input
-                          type="text"
-                          value={replyText}
-                          onChange={e => setReplyText(e.target.value)}
-                          placeholder="Write a reply..."
-                          className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
-                        />
-                        <button
-                          onClick={() => addReply(comment.id)}
-                          className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
-                        >
-                          <Send className="w-4.5 h-4.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-12">
+              <MessageCircle className={`w-16 h-16 mx-auto ${textSecondary} opacity-20 mb-4`} />
+              <p className={`text-lg ${textSecondary}`}>Comments feature coming soon!</p>
             </div>
-
-            {selectedPhoto.comments.length === 0 && (
-              <div className="text-center py-12">
-                <MessageCircle className={`w-16 h-16 mx-auto ${textSecondary} opacity-20 mb-4`} />
-                <p className={`text-lg ${textSecondary}`}>No comments yet. Be the first!</p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -853,7 +845,7 @@ export default function App() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {userPhotos.map(photo => (
                     <div
-                      key={photo.id}
+                      key={photo._id}
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
@@ -866,28 +858,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {userPhotos.map(photo => (
-                    <div
-                      key={photo.id + 's'}
-                      className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-                      onClick={() => setSelectedPhoto(photo)}
-                    >
-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                        <div className="flex items-center gap-6 text-white">
-                          <span className="flex items-center gap-2 font-semibold text-lg">
-                            <Heart className="w-5 h-5 fill-current" />
-                            {photo.likes}
-                          </span>
-                          <span className="flex items-center gap-2 font-semibold text-lg">
-                            <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentCount}
                           </span>
                         </div>
                       </div>
@@ -898,9 +869,9 @@ export default function App() {
 
               {activeTab === 'favorites' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {userPhotos.slice(0, 3).concat(userPhotos.slice(0, 2)).map((photo, idx) => (
+                  {userPhotos.filter(p => p.isLiked).slice(0, 6).map((photo) => (
                     <div
-                      key={idx}
+                      key={photo._id}
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
@@ -913,7 +884,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentCount}
                           </span>
                         </div>
                       </div>
@@ -1324,7 +1295,7 @@ export default function App() {
             <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
               {filteredPhotos.map((photo, idx) => (
                 <div
-                  key={photo.id}
+                  key={photo._id}
                   className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
                   onClick={() => setSelectedPhoto(photo)}
                   style={{ animationDelay: `${idx * 0.1}s` }}
@@ -1341,23 +1312,23 @@ export default function App() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                            <img src={photo.avatar} alt={photo.author} className="w-full h-full object-cover" />
+                            <img src={photo.author.avatar} alt={photo.author.username} className="w-full h-full object-cover" />
                           </div>
-                          <span className="text-white font-semibold text-shadow">{photo.author}</span>
+                          <span className="text-white font-semibold text-shadow">{photo.author.username}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author); }}
+                            onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author.username); }}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all shadow-lg transform hover:scale-110 ${
-                              isFollowing[photo.author]
+                              isFollowing[photo.author.username]
                                 ? 'bg-gray-200 text-gray-800'
                                 : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
                             }`}
                           >
-                            {isFollowing[photo.author] ? '✓' : '+'}
+                            {isFollowing[photo.author.username] ? '✓' : '+'}
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
+                            onClick={(e) => { e.stopPropagation(); toggleLike(photo._id); }}
                             className="p-3 bg-white/90 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-110"
                           >
                             <Heart className={`w-6 h-6 transition-all ${photo.isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
@@ -1372,7 +1343,7 @@ export default function App() {
                         <h3 className={`font-bold text-xl ${textPrimary} truncate`}>{photo.title}</h3>
                         <p className={`text-sm font-medium ${textSecondary} mt-1 flex items-center gap-1`}>
                           <span className="w-2 h-2 bg-teal-500 rounded-full" />
-                          {photo.author}
+                          {photo.author.username}
                         </p>
                         <div className="flex flex-wrap gap-2 mt-3">
                           {photo.tags.slice(0, 3).map(tag => (
@@ -1391,7 +1362,7 @@ export default function App() {
                         </div>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
+                        onClick={(e) => { e.stopPropagation(); toggleLike(photo._id); }}
                         className={`p-2 rounded-full transition-all transform hover:scale-110 ${photo.isLiked ? 'bg-red-50 dark:bg-red-950/30' : hoverBg}`}
                       >
                         <Heart className={`w-6 h-6 transition-all duration-300 ${photo.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
@@ -1404,7 +1375,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <MessageCircle className={`w-4 h-4 ${textSecondary}`} />
-                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.comments.length}</span>
+                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.commentCount}</span>
                       </div>
                     </div>
                   </div>

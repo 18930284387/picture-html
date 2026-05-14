@@ -1,0 +1,254 @@
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import {
+  Home,
+  Compass,
+  Heart,
+  User,
+  Menu,
+  X,
+  Plus,
+  Search,
+  Bell,
+  Mail,
+  Upload,
+  MessageCircle,
+  Share2,
+  Trash2,
+  EyeOff,
+  Moon,
+  Sun,
+  LogOut,
+  Settings,
+  ChevronLeft,
+  Send,
+  ThumbsUp,
+  Camera,
+  Lock,
+  Globe,
+  Users,
+  Bookmark,
+  Grid3X3,
+  ChevronDown
+} from 'lucide-react';
+
+interface User {
+  _id: string;
+  username: string;
+  avatar: string;
+}
+
+interface Photo {
+  _id: string;
+  url: string;
+  title: string;
+  author: User;
+  likes: number;
+  commentCount: number;
+  tags: string[];
+  isLiked: boolean;
+  createdAt?: string;
+}
+
+interface Comment {
+  id: number;
+  user: string;
+  avatar: string;
+  text: string;
+  likes: number;
+  replies: Comment[];
+}
+
+const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+
+export default function App() {
+  const [darkMode, setDarkMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+  const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+
+  const toggleFollow = (authorName: string) => {
+    setIsFollowing(prev => ({
+      ...prev,
+      [authorName]: !prev[authorName]
+    }));
+  };
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('hot');
+  
+  const [uploadDrag, setUploadDrag] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState('');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const [uploadPrivacy, setUploadPrivacy] = useState<'public' | 'followers' | 'private'>('public');
+  
+  const [settingsName, setSettingsName] = useState('Alex Chen');
+  const [settingsBio, setSettingsBio] = useState('Photography enthusiast from San Francisco');
+  const [settingsEmail, setSettingsEmail] = useState('alex@example.com');
+  const [newComment, setNewComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchPhotos = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/photos');
+      setPhotos(response.data);
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+      const mockPhotos: Photo[] = [
+        {
+          _id: '1',
+          url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
+          title: 'Mountain Sunrise',
+          author: { _id: '1', username: 'Alex Chen', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100' },
+          likes: 342,
+          commentCount: 1,
+          tags: ['nature', 'mountains', 'sunrise'],
+          isLiked: false
+        },
+        {
+          _id: '2',
+          url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
+          title: 'Tokyo Nights',
+          author: { _id: '2', username: 'Yuki Tanaka', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100' },
+          likes: 567,
+          commentCount: 0,
+          tags: ['urban', 'japan', 'night'],
+          isLiked: true
+        }
+      ];
+      setPhotos(mockPhotos);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchPhotos();
+    }
+  }, [isLoggedIn]);
+
+  const toggleLike = (photoId: string) => {
+    setPhotos(photos.map(p => {
+      if (p._id === photoId) {
+        return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
+      }
+      return p;
+    }));
+    if (selectedPhoto && selectedPhoto._id === photoId) {
+      setSelectedPhoto({
+        ...selectedPhoto,
+        isLiked: !selectedPhoto.isLiked,
+        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
+      });
+    }
+  };
+
+  const addComment = () => {
+    if (!newComment.trim() || !selectedPhoto) return;
+    const comment: Comment = {
+      id: Date.now(),
+      user: 'Alex Chen',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+      text: newComment,
+      likes: 0,
+      replies: []
+    };
+    const updatedPhoto = { ...selectedPhoto, commentCount: selectedPhoto.commentCount + 1 };
+    setSelectedPhoto(updatedPhoto);
+    setPhotos(photos.map(p => p._id === selectedPhoto._id ? updatedPhoto : p));
+    setNewComment('');
+  };
+
+  const addReply = (commentId: number) => {
+    if (!replyText.trim() || !selectedPhoto) return;
+    const reply: Comment = {
+      id: Date.now(),
+      user: 'Alex Chen',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+      text: replyText,
+      likes: 0,
+      replies: []
+    };
+    setReplyText('');
+    setReplyingTo(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadDrag(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => setUploadPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setUploadPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadPreview || !uploadTitle || !fileInputRef.current?.files?.[0]) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', fileInputRef.current.files[0]);
+      formData.append('title', uploadTitle);
+      formData.append('tags', uploadTags);
+      formData.append('privacy', uploadPrivacy);
+
+      const response = await axios.post('/api/photos', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setPhotos([response.data, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      const mockPhoto: Photo = {
+        _id: Date.now().toString(),
+        url: uploadPreview,
+        title: uploadTitle,
+        author: { _id: '1', username: 'Alex Chen', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100' },
+        likes: 0,
+        commentCount: 0,
+        tags: uploadTags.split(',').map(t => t.trim()),
+        isLiked: false
+      };
+      setPhotos([mockPhoto, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const filteredPhotos = photos.filter(photo =>
+    activeCategory !== 'follows' || photo.author.username !== 'Alex Chen'
+  );
