@@ -1,0 +1,76 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..2f2811b 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -173,6 +173,9 @@ export default function App() {
+   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
++  const [loginEmail, setLoginEmail] = useState('');
++  const [loginPassword, setLoginPassword] = useState('');
++  const [loginError, setLoginError] = useState('');
+ 
+   const toggleFollow = (authorName: string) => {
+     setIsFollowing(prev => ({
+@@ -180,6 +183,28 @@ export default function App() {
+       [authorName]: !prev[authorName]
+     }));
+   };
++
++  const handleLogin = () => {
++    setLoginError('');
++
++    if (!loginEmail.includes('@')) {
++      setLoginError('Please enter a valid email address containing "@".');
++      return;
++    }
++
++    const hasDigit = /\d/.test(loginPassword);
++    const hasLetter = /[a-zA-Z]/.test(loginPassword);
++    const hasSpecial = /[^a-zA-Z0-9]/.test(loginPassword);
++    const typeCount = [hasDigit, hasLetter, hasSpecial].filter(Boolean).length;
++
++    if (loginPassword.length < 6 || typeCount < 2) {
++      setLoginError('Password must be at least 6 characters and contain at least two of the following: digits, letters, special characters.');
++      return;
++    }
++
++    setIsLoggedIn(true);
++  };
++
+   const [searchQuery, setSearchQuery] = useState('');
+   const [activeCategory, setActiveCategory] = useState('hot');
+   
+@@ -342,6 +367,8 @@ export default function App() {
+                 <input
+                   type="email"
+                   placeholder="you@example.com"
++                  value={loginEmail}
++                  onChange={(e) => { setLoginEmail(e.target.value); setLoginError(''); }}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -353,6 +380,8 @@ export default function App() {
+                 <input
+                   type="password"
+                   placeholder="••••••••"
++                  value={loginPassword}
++                  onChange={(e) => { setLoginPassword(e.target.value); setLoginError(''); }}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -375,8 +404,13 @@ export default function App() {
+                 <button className="text-sm text-teal-500 hover:text-teal-600">Forgot Password?</button>
+               </div>
+             )}
++            {loginError && (
++              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
++                {loginError}
++              </div>
++            )}
+             <button
+-              onClick={() => setIsLoggedIn(true)}
++              onClick={handleLogin}
+               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
+             >
+               {authMode === 'login' ? 'Sign In' : 'Create Account'}
