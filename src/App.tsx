@@ -293,9 +293,12 @@ export default function App() {
     setCurrentPage('home');
   };
 
-  const filteredPhotos = photos.filter(photo =>
-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
-  );
+  const filteredPhotos = photos.filter(photo => {
+    if (activeCategory === 'follows') {
+      return isFollowing[photo.author] === true;
+    }
+    return true;
+  });
  
   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
   const textPrimary = darkMode ? 'text-white' : 'text-gray-900';
