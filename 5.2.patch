@@ -1,0 +1,13 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..0410ddb 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -294,7 +294,7 @@ export default function App() {
+   };
+ 
+   const filteredPhotos = photos.filter(photo =>
+-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
++    activeCategory !== 'follows' || isFollowing[photo.author]
+   );
+  
+   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
