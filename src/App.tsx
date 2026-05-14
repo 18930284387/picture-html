@@ -173,6 +173,77 @@ export default function App() {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+  
+  // 登录和注册表单状态
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [registerError, setRegisterError] = useState('');
+
+  // 验证邮箱格式
+  const validateEmail = (email: string) => {
+    return email.includes('@');
+  };
+
+  // 验证密码强度
+  const validatePassword = (password: string) => {
+    if (password.length < 6) return false;
+    
+    const hasDigit = /\d/.test(password);
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+[\]{}|;':",.<>?/~`]/.test(password);
+    
+    // 至少包含两种类型
+    return (hasDigit && hasLetter) || (hasDigit && hasSpecial) || (hasLetter && hasSpecial);
+  };
+
+  // 处理登录
+  const handleLogin = () => {
+    setLoginError('');
+    
+    if (!validateEmail(loginEmail)) {
+      setLoginError('请输入有效的邮箱地址（必须包含@符号）');
+      return;
+    }
+    
+    if (!validatePassword(loginPassword)) {
+      setLoginError('密码长度至少6位，且需包含数字、字母、特殊字符中的两种类型');
+      return;
+    }
+    
+    setIsLoggedIn(true);
+  };
+
+  // 处理注册
+  const handleRegister = () => {
+    setRegisterError('');
+    
+    if (!registerName.trim()) {
+      setRegisterError('请输入姓名');
+      return;
+    }
+    
+    if (!validateEmail(registerEmail)) {
+      setRegisterError('请输入有效的邮箱地址（必须包含@符号）');
+      return;
+    }
+    
+    if (!validatePassword(registerPassword)) {
+      setRegisterError('密码长度至少6位，且需包含数字、字母、特殊字符中的两种类型');
+      return;
+    }
+    
+    if (registerPassword !== registerConfirmPassword) {
+      setRegisterError('两次输入的密码不一致');
+      return;
+    }
+    
+    setIsLoggedIn(true);
+  };
 
   const toggleFollow = (authorName: string) => {
     setIsFollowing(prev => ({
@@ -322,6 +393,15 @@ export default function App() {
           </div>
 
           <div className="space-y-4">
+            {/* 错误提示 */}
+            {(loginError || registerError) && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-xl">
+                <p className="text-red-600 dark:text-red-400 text-sm">
+                  {authMode === 'login' ? loginError : registerError}
+                </p>
+              </div>
+            )}
+            
             {authMode === 'register' && (
               <div>
                 <label className={`block text-sm font-medium ${textPrimary} mb-2`}>Full Name</label>
@@ -330,6 +410,8 @@ export default function App() {
                   <input
                     type="text"
                     placeholder="John Doe"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
                     className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                   />
                 </div>
@@ -342,6 +424,14 @@ export default function App() {
                 <input
                   type="email"
                   placeholder="you@example.com"
+                  value={authMode === 'login' ? loginEmail : registerEmail}
+                  onChange={(e) => {
+                    if (authMode === 'login') {
+                      setLoginEmail(e.target.value);
+                    } else {
+                      setRegisterEmail(e.target.value);
+                    }
+                  }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                 />
               </div>
@@ -353,6 +443,14 @@ export default function App() {
                 <input
                   type="password"
                   placeholder="••••••••"
+                  value={authMode === 'login' ? loginPassword : registerPassword}
+                  onChange={(e) => {
+                    if (authMode === 'login') {
+                      setLoginPassword(e.target.value);
+                    } else {
+                      setRegisterPassword(e.target.value);
+                    }
+                  }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                 />
               </div>
@@ -365,6 +463,8 @@ export default function App() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={registerConfirmPassword}
+                    onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                     className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                   />
                 </div>
@@ -376,7 +476,7 @@ export default function App() {
               </div>
             )}
             <button
-              onClick={() => setIsLoggedIn(true)}
+              onClick={authMode === 'login' ? handleLogin : handleRegister}
               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
             >
               {authMode === 'login' ? 'Sign In' : 'Create Account'}
