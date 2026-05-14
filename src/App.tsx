@@ -294,7 +294,7 @@ export default function App() {
   };
 
   const filteredPhotos = photos.filter(photo =>
-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+    activeCategory !== 'follows' || isFollowing[photo.author] === true
   );
  
   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
