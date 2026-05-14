@@ -4,9 +4,19 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 27823,   // 随机端口（由脚本生成）
-    strictPort: false,     // 若被占用，Vite 会继续找下一个可用端口
-    open: false
+    port: 27823,
+    strictPort: false,
+    open: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port: 27823,            // 预览端口保持默认，可按需改为随机

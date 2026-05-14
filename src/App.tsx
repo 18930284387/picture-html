@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import {
   Home,
   Compass,
@@ -32,15 +33,16 @@ import {
 } from 'lucide-react';
 
 interface Photo {
-  id: number;
+  _id: string;
   url: string;
   title: string;
-  author: string;
-  avatar: string;
+  author: { _id: string; name: string; avatar: string };
   likes: number;
-  comments: Comment[];
+  commentsCount: number;
   tags: string[];
   isLiked: boolean;
+  privacy: string;
+  comments: Comment[];
 }
 
 interface Comment {
@@ -52,115 +54,6 @@ interface Comment {
   replies: Comment[];
 }
 
-const initialPhotos: Photo[] = [
-  {
-    id: 1,
-    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Mountain Sunrise',
-    author: 'Alex Chen',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 342,
-    comments: [
-      {
-        id: 1,
-        user: 'Sarah M.',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
-        text: 'Absolutely stunning! The colors are incredible.',
-        likes: 24,
-        replies: [
-          {
-            id: 2,
-            user: 'Alex Chen',
-            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-            text: 'Thank you! Shot at golden hour.',
-            likes: 8,
-            replies: []
-          }
-        ]
-      }
-    ],
-    tags: ['nature', 'mountains', 'sunrise'],
-    isLiked: false
-  },
-  {
-    id: 2,
-    url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Tokyo Nights',
-    author: 'Yuki Tanaka',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 567,
-    comments: [],
-    tags: ['urban', 'japan', 'night'],
-    isLiked: true
-  },
-  {
-    id: 3,
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=400&h=400',
-    title: 'Tropical Beach',
-    author: 'Maria Santos',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 891,
-    comments: [],
-    tags: ['beach', 'tropical', 'ocean'],
-    isLiked: false
-  },
-  {
-    id: 4,
-    url: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&q=80&w=400&h=550',
-    title: 'City Lights',
-    author: 'David Park',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 234,
-    comments: [],
-    tags: ['city', 'architecture', 'urban'],
-    isLiked: false
-  },
-  {
-    id: 5,
-    url: 'https://images.unsplash.com/photo-1518173946687-a4c036bc0a9a?auto=format&fit=crop&q=80&w=400&h=650',
-    title: 'Forest Path',
-    author: 'Emma Green',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 1234,
-    comments: [],
-    tags: ['forest', 'nature', 'hiking'],
-    isLiked: true
-  },
-  {
-    id: 6,
-    url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&q=80&w=400&h=450',
-    title: 'Aurora Dreams',
-    author: 'Lars Olsen',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 2341,
-    comments: [],
-    tags: ['aurora', 'night', 'northern'],
-    isLiked: false
-  },
-  {
-    id: 7,
-    url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Autumn Colors',
-    author: 'Chris Wong',
-    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 456,
-    comments: [],
-    tags: ['autumn', 'forest', 'colors'],
-    isLiked: false
-  },
-  {
-    id: 8,
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Portrait Study',
-    author: 'Jenny Liu',
-    avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 789,
-    comments: [],
-    tags: ['portrait', 'people', 'bw'],
-    isLiked: true
-  }
-];
-
 const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
 
 export default function App() {
@@ -170,7 +63,24 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        const response = await axios.get('/api/photos');
+        const photosWithDefaults = response.data.map((photo: Photo) => ({
+          ...photo,
+          isLiked: false,
+          comments: [],
+        }));
+        setPhotos(photosWithDefaults);
+      } catch (error) {
+        console.error('Failed to fetch photos:', error);
+      }
+    };
+    fetchPhotos();
+  }, []);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
 
@@ -198,14 +108,14 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleLike = (photoId: number) => {
+  const toggleLike = (photoId: string) => {
     setPhotos(photos.map(p => {
-      if (p.id === photoId) {
+      if (p._id === photoId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
+    if (selectedPhoto && selectedPhoto._id === photoId) {
       setSelectedPhoto({
         ...selectedPhoto,
         isLiked: !selectedPhoto.isLiked,
@@ -226,7 +136,7 @@ export default function App() {
     };
     const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(photos.map(p => p._id === selectedPhoto._id ? updatedPhoto : p));
     setNewComment('');
   };
 
@@ -248,7 +158,7 @@ export default function App() {
     });
     const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(photos.map(p => p._id === selectedPhoto._id ? updatedPhoto : p));
     setReplyText('');
     setReplyingTo(null);
   };
@@ -273,28 +183,37 @@ export default function App() {
     }
   };
 
-  const handleUpload = () => {
-    if (!uploadPreview || !uploadTitle) return;
-    const newPhoto: Photo = {
-      id: Date.now(),
-      url: uploadPreview,
-      title: uploadTitle,
-      author: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      likes: 0,
-      comments: [],
-      tags: uploadTags.split(',').map(t => t.trim()),
-      isLiked: false
-    };
-    setPhotos([newPhoto, ...photos]);
-    setUploadPreview('');
-    setUploadTitle('');
-    setUploadTags('');
-    setCurrentPage('home');
+  const handleUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file || !uploadTitle) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('title', uploadTitle);
+    formData.append('tags', uploadTags);
+    formData.append('privacy', uploadPrivacy);
+
+    try {
+      const response = await axios.post('/api/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const newPhoto: Photo = {
+        ...response.data,
+        isLiked: false,
+        comments: [],
+      };
+      setPhotos([newPhoto, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
   };
 
   const filteredPhotos = photos.filter(photo =>
-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+    activeCategory !== 'follows' || photo.author.name !== 'Alex Chen'
   );
  
   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
@@ -461,31 +380,31 @@ export default function App() {
           <div className={`p-4 ${cardBg}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img src={selectedPhoto.avatar} alt={selectedPhoto.author} className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" />
+                <img src={selectedPhoto.author.avatar} alt={selectedPhoto.author.name} className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" />
                 <div>
-                  <p className={`font-semibold ${textPrimary}`}>{selectedPhoto.author}</p>
+                  <p className={`font-semibold ${textPrimary}`}>{selectedPhoto.author.name}</p>
                   <p className={`text-sm ${textSecondary}`}>Photographer</p>
                 </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleFollow(selectedPhoto.author);
+                  toggleFollow(selectedPhoto.author.name);
                 }}
                 className={`px-5 py-2 font-medium rounded-full text-sm transition-all shadow-md ${
-                  isFollowing[selectedPhoto.author]
+                  isFollowing[selectedPhoto.author.name]
                     ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
                     : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600'
                 }`}
               >
-                {isFollowing[selectedPhoto.author] ? '✓ Following' : '+ Follow'}
+                {isFollowing[selectedPhoto.author.name] ? '✓ Following' : '+ Follow'}
               </button>
             </div>
 
             <div className="flex items-center justify-between py-4 border-t border-b border-gray-100 dark:border-gray-800 mt-4">
               <div className="flex items-center gap-8">
                 <button
-                  onClick={() => toggleLike(selectedPhoto.id)}
+                  onClick={() => toggleLike(selectedPhoto._id)}
                   className="flex items-center gap-2"
                 >
                   <Heart className={`w-7 h-7 transition-all ${selectedPhoto.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
@@ -493,7 +412,7 @@ export default function App() {
                 </button>
                 <div className="flex items-center gap-2">
                   <MessageCircle className={`w-7 h-7 ${textSecondary}`} />
-                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.comments.length}</span>
+                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.commentsCount}</span>
                 </div>
               </div>
             </div>
@@ -516,7 +435,7 @@ export default function App() {
           <div className={`mt-2 p-4 ${cardBg}`}>
             <h3 className={`font-semibold text-lg ${textPrimary} mb-6 flex items-center gap-2`}>
               <MessageCircle className="w-5 h-5" />
-              Comments ({selectedPhoto.comments.length})
+              Comments ({selectedPhoto.commentsCount})
             </h3>
 
             <div className="space-y-6">
@@ -853,7 +772,7 @@ export default function App() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {userPhotos.map(photo => (
                     <div
-                      key={photo.id}
+                      key={photo._id}
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
@@ -866,7 +785,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -874,7 +793,7 @@ export default function App() {
                   ))}
                   {userPhotos.map(photo => (
                     <div
-                      key={photo.id + 's'}
+                      key={photo._id + 's'}
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
@@ -887,7 +806,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -913,7 +832,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -1324,7 +1243,7 @@ export default function App() {
             <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
               {filteredPhotos.map((photo, idx) => (
                 <div
-                  key={photo.id}
+                  key={photo._id}
                   className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
                   onClick={() => setSelectedPhoto(photo)}
                   style={{ animationDelay: `${idx * 0.1}s` }}
@@ -1341,23 +1260,23 @@ export default function App() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                            <img src={photo.avatar} alt={photo.author} className="w-full h-full object-cover" />
+                            <img src={photo.author.avatar} alt={photo.author.name} className="w-full h-full object-cover" />
                           </div>
-                          <span className="text-white font-semibold text-shadow">{photo.author}</span>
+                          <span className="text-white font-semibold text-shadow">{photo.author.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author); }}
+                            onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author.name); }}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all shadow-lg transform hover:scale-110 ${
-                              isFollowing[photo.author]
+                              isFollowing[photo.author.name]
                                 ? 'bg-gray-200 text-gray-800'
                                 : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
                             }`}
                           >
-                            {isFollowing[photo.author] ? '✓' : '+'}
+                            {isFollowing[photo.author.name] ? '✓' : '+'}
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
+                            onClick={(e) => { e.stopPropagation(); toggleLike(photo._id); }}
                             className="p-3 bg-white/90 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-110"
                           >
                             <Heart className={`w-6 h-6 transition-all ${photo.isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
@@ -1372,7 +1291,7 @@ export default function App() {
                         <h3 className={`font-bold text-xl ${textPrimary} truncate`}>{photo.title}</h3>
                         <p className={`text-sm font-medium ${textSecondary} mt-1 flex items-center gap-1`}>
                           <span className="w-2 h-2 bg-teal-500 rounded-full" />
-                          {photo.author}
+                          {photo.author.name}
                         </p>
                         <div className="flex flex-wrap gap-2 mt-3">
                           {photo.tags.slice(0, 3).map(tag => (
@@ -1391,7 +1310,7 @@ export default function App() {
                         </div>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
+                        onClick={(e) => { e.stopPropagation(); toggleLike(photo._id); }}
                         className={`p-2 rounded-full transition-all transform hover:scale-110 ${photo.isLiked ? 'bg-red-50 dark:bg-red-950/30' : hoverBg}`}
                       >
                         <Heart className={`w-6 h-6 transition-all duration-300 ${photo.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
@@ -1404,7 +1323,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <MessageCircle className={`w-4 h-4 ${textSecondary}`} />
-                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.comments.length}</span>
+                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.commentsCount}</span>
                       </div>
                     </div>
                   </div>
