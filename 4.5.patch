@@ -1,0 +1,128 @@
+diff --git a/package.json b/package.json
+index 22180b5..e0d0829 100755
+--- a/package.json
++++ b/package.json
+@@ -9,6 +9,7 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
++    "axios": "^1.6.0",
+     "lucide-react": "^0.577.0",
+     "react": "18.2.0",
+     "react-dom": "18.2.0"
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..9fd8d97 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState, useRef } from 'react';
++import React, { useState, useRef, useEffect } from 'react';
++import axios from 'axios';
+ import {
+   Home,
+   Compass,
+@@ -32,20 +33,25 @@ import {
+ } from 'lucide-react';
+ 
+ interface Photo {
+-  id: number;
++  _id: string;
+   url: string;
+   title: string;
+-  author: string;
+-  avatar: string;
++  author: Author;
+   likes: number;
+   comments: Comment[];
+   tags: string[];
+   isLiked: boolean;
+ }
+ 
++interface Author {
++  _id: string;
++  username: string;
++  avatar: string;
++}
++
+ interface Comment {
+   id: number;
+-  user: string;
++  user: Author;
+   avatar: string;
+   text: string;
+   likes: number;
+@@ -170,10 +176,22 @@ export default function App() {
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
++  const [photos, setPhotos] = useState<Photo[]>([]);
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+ 
++  useEffect(() => {
++    const fetchPhotos = async () => {
++      try {
++        const response = await axios.get('http://localhost:3001/api/photos');
++        setPhotos(response.data);
++      } catch (error) {
++        console.error('Failed to fetch photos:', error);
++      }
++    };
++    fetchPhotos();
++  }, []);
++
+   const toggleFollow = (authorName: string) => {
+     setIsFollowing(prev => ({
+       ...prev,
+@@ -273,24 +291,32 @@ export default function App() {
+     }
+   };
+ 
+-  const handleUpload = () => {
+-    if (!uploadPreview || !uploadTitle) return;
+-    const newPhoto: Photo = {
+-      id: Date.now(),
+-      url: uploadPreview,
+-      title: uploadTitle,
+-      author: 'Alex Chen',
+-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      likes: 0,
+-      comments: [],
+-      tags: uploadTags.split(',').map(t => t.trim()),
+-      isLiked: false
+-    };
+-    setPhotos([newPhoto, ...photos]);
+-    setUploadPreview('');
+-    setUploadTitle('');
+-    setUploadTags('');
+-    setCurrentPage('home');
++  const handleUpload = async () => {
++    if (!fileInputRef.current?.files?.[0] || !uploadTitle) return;
++
++    const file = fileInputRef.current.files[0];
++    const formData = new FormData();
++    formData.append('image', file);
++    formData.append('title', uploadTitle);
++    formData.append('tags', uploadTags);
++
++    try {
++      const response = await axios.post('http://localhost:3001/api/photos', formData, {
++        headers: {
++          'Content-Type': 'multipart/form-data',
++        },
++      });
++      setPhotos([response.data, ...photos]);
++      setUploadPreview('');
++      setUploadTitle('');
++      setUploadTags('');
++      if (fileInputRef.current) {
++        fileInputRef.current.value = '';
++      }
++      setCurrentPage('home');
++    } catch (error) {
++      console.error('Failed to upload photo:', error);
++    }
+   };
+ 
+   const filteredPhotos = photos.filter(photo =>
