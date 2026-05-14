@@ -1,0 +1,361 @@
+diff --git a/package.json b/package.json
+index 22180b5..d638f78 100755
+--- a/package.json
++++ b/package.json
+@@ -9,11 +9,18 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
++    "axios": "^1.6.0",
++    "cors": "^2.8.5",
++    "dotenv": "^16.3.1",
++    "express": "^4.18.2",
+     "lucide-react": "^0.577.0",
++    "mongoose": "^8.0.0",
+     "react": "18.2.0",
+     "react-dom": "18.2.0"
+   },
+   "devDependencies": {
++    "@types/cors": "^2.8.15",
++    "@types/express": "^4.17.20",
+     "@types/react": "^18.2.15",
+     "@types/react-dom": "^18.2.7",
+     "@vitejs/plugin-react": "^4.0.3",
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..0b2a0fd 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,5 @@
+-import React, { useState, useRef } from 'react';
++import React, { useState, useRef, useEffect } from 'react';
++import axios from 'axios';
+ import {
+   Home,
+   Compass,
+@@ -52,128 +53,37 @@ interface Comment {
+   replies: Comment[];
+ }
+ 
+-const initialPhotos: Photo[] = [
+-  {
+-    id: 1,
+-    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
+-    title: 'Mountain Sunrise',
+-    author: 'Alex Chen',
+-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 342,
+-    comments: [
+-      {
+-        id: 1,
+-        user: 'Sarah M.',
+-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
+-        text: 'Absolutely stunning! The colors are incredible.',
+-        likes: 24,
+-        replies: [
+-          {
+-            id: 2,
+-            user: 'Alex Chen',
+-            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-            text: 'Thank you! Shot at golden hour.',
+-            likes: 8,
+-            replies: []
+-          }
+-        ]
+-      }
+-    ],
+-    tags: ['nature', 'mountains', 'sunrise'],
+-    isLiked: false
+-  },
+-  {
+-    id: 2,
+-    url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
+-    title: 'Tokyo Nights',
+-    author: 'Yuki Tanaka',
+-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 567,
+-    comments: [],
+-    tags: ['urban', 'japan', 'night'],
+-    isLiked: true
+-  },
+-  {
+-    id: 3,
+-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=400&h=400',
+-    title: 'Tropical Beach',
+-    author: 'Maria Santos',
+-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 891,
+-    comments: [],
+-    tags: ['beach', 'tropical', 'ocean'],
+-    isLiked: false
+-  },
+-  {
+-    id: 4,
+-    url: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&q=80&w=400&h=550',
+-    title: 'City Lights',
+-    author: 'David Park',
+-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 234,
+-    comments: [],
+-    tags: ['city', 'architecture', 'urban'],
+-    isLiked: false
+-  },
+-  {
+-    id: 5,
+-    url: 'https://images.unsplash.com/photo-1518173946687-a4c036bc0a9a?auto=format&fit=crop&q=80&w=400&h=650',
+-    title: 'Forest Path',
+-    author: 'Emma Green',
+-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 1234,
+-    comments: [],
+-    tags: ['forest', 'nature', 'hiking'],
+-    isLiked: true
+-  },
+-  {
+-    id: 6,
+-    url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&q=80&w=400&h=450',
+-    title: 'Aurora Dreams',
+-    author: 'Lars Olsen',
+-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 2341,
+-    comments: [],
+-    tags: ['aurora', 'night', 'northern'],
+-    isLiked: false
+-  },
+-  {
+-    id: 7,
+-    url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400&h=500',
+-    title: 'Autumn Colors',
+-    author: 'Chris Wong',
+-    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 456,
+-    comments: [],
+-    tags: ['autumn', 'forest', 'colors'],
+-    isLiked: false
+-  },
+-  {
+-    id: 8,
+-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=600',
+-    title: 'Portrait Study',
+-    author: 'Jenny Liu',
+-    avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&q=80&w=100&h=100',
+-    likes: 789,
+-    comments: [],
+-    tags: ['portrait', 'people', 'bw'],
+-    isLiked: true
+-  }
+-];
+-
+ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+ 
++const API_URL = 'http://localhost:5000/api';
++
+ export default function App() {
+   const [darkMode, setDarkMode] = useState(false);
+   const [currentPage, setCurrentPage] = useState('home');
+   const [isLoggedIn, setIsLoggedIn] = useState(false);
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
++  const [authName, setAuthName] = useState('');
++  const [authEmail, setAuthEmail] = useState('');
++  const [authPassword, setAuthPassword] = useState('');
+   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
++  const [photos, setPhotos] = useState<Photo[]>([]);
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+ 
++  useEffect(() => {
++    fetchPhotos();
++  }, []);
++
++  const fetchPhotos = async () => {
++    try {
++      const response = await axios.get(`${API_URL}/photos`);
++      setPhotos(response.data);
++    } catch (error) {
++      console.error('Error fetching photos:', error);
++    }
++  };
++
+   const toggleFollow = (authorName: string) => {
+     setIsFollowing(prev => ({
+       ...prev,
+@@ -198,7 +108,7 @@ export default function App() {
+ 
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
+-  const toggleLike = (photoId: number) => {
++  const toggleLike = async (photoId: number) => {
+     setPhotos(photos.map(p => {
+       if (p.id === photoId) {
+         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
+@@ -212,45 +122,48 @@ export default function App() {
+         likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
+       });
+     }
++    try {
++      await axios.put(`${API_URL}/photos/${photoId}/like`);
++    } catch (error) {
++      console.error('Error toggling like:', error);
++    }
+   };
+ 
+-  const addComment = () => {
++  const addComment = async () => {
+     if (!newComment.trim() || !selectedPhoto) return;
+-    const comment: Comment = {
+-      id: Date.now(),
++    const commentData = {
+       user: 'Alex Chen',
+       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      text: newComment,
+-      likes: 0,
+-      replies: []
++      text: newComment
+     };
+-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
+-    setSelectedPhoto(updatedPhoto);
+-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+-    setNewComment('');
++    try {
++      const response = await axios.post(`${API_URL}/photos/${selectedPhoto.id}/comments`, commentData);
++      const updatedPhoto = response.data;
++      setSelectedPhoto(updatedPhoto);
++      setPhotos(photos.map(p => p.id === updatedPhoto.id ? updatedPhoto : p));
++      setNewComment('');
++    } catch (error) {
++      console.error('Error adding comment:', error);
++    }
+   };
+ 
+-  const addReply = (commentId: number) => {
++  const addReply = async (commentId: number) => {
+     if (!replyText.trim() || !selectedPhoto) return;
+-    const reply: Comment = {
+-      id: Date.now(),
++    const replyData = {
+       user: 'Alex Chen',
+       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      text: replyText,
+-      likes: 0,
+-      replies: []
++      text: replyText
+     };
+-    const updatedComments = selectedPhoto.comments.map(c => {
+-      if (c.id === commentId) {
+-        return { ...c, replies: [...c.replies, reply] };
+-      }
+-      return c;
+-    });
+-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
+-    setSelectedPhoto(updatedPhoto);
+-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+-    setReplyText('');
+-    setReplyingTo(null);
++    try {
++      const response = await axios.post(`${API_URL}/photos/${selectedPhoto.id}/comments/${commentId}/replies`, replyData);
++      const updatedPhoto = response.data;
++      setSelectedPhoto(updatedPhoto);
++      setPhotos(photos.map(p => p.id === updatedPhoto.id ? updatedPhoto : p));
++      setReplyText('');
++      setReplyingTo(null);
++    } catch (error) {
++      console.error('Error adding reply:', error);
++    }
+   };
+ 
+   const handleDrop = (e: React.DragEvent) => {
+@@ -273,29 +186,45 @@ export default function App() {
+     }
+   };
+ 
+-  const handleUpload = () => {
++  const handleUpload = async () => {
+     if (!uploadPreview || !uploadTitle) return;
+-    const newPhoto: Photo = {
+-      id: Date.now(),
++    const newPhotoData = {
+       url: uploadPreview,
+       title: uploadTitle,
+       author: 'Alex Chen',
+       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      likes: 0,
+-      comments: [],
+-      tags: uploadTags.split(',').map(t => t.trim()),
+-      isLiked: false
++      tags: uploadTags.split(',').map(t => t.trim())
+     };
+-    setPhotos([newPhoto, ...photos]);
+-    setUploadPreview('');
+-    setUploadTitle('');
+-    setUploadTags('');
+-    setCurrentPage('home');
++    try {
++      const response = await axios.post(`${API_URL}/photos`, newPhotoData);
++      setPhotos([response.data, ...photos]);
++      setUploadPreview('');
++      setUploadTitle('');
++      setUploadTags('');
++      setCurrentPage('home');
++    } catch (error) {
++      console.error('Error uploading photo:', error);
++    }
+   };
+ 
+   const filteredPhotos = photos.filter(photo =>
+     activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+   );
++
++  const handleAuth = async () => {
++    try {
++      if (authMode === 'login') {
++        const res = await axios.post(`${API_URL}/users/login`, { email: authEmail, password: authPassword });
++        if (res.data) setIsLoggedIn(true);
++      } else {
++        const res = await axios.post(`${API_URL}/users/register`, { name: authName, email: authEmail, password: authPassword });
++        if (res.data) setIsLoggedIn(true);
++      }
++    } catch (error) {
++      console.error('Auth error:', error);
++      alert('Authentication failed');
++    }
++  };
+  
+   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
+   const textPrimary = darkMode ? 'text-white' : 'text-gray-900';
+@@ -330,6 +259,8 @@ export default function App() {
+                   <input
+                     type="text"
+                     placeholder="John Doe"
++                    value={authName}
++                    onChange={(e) => setAuthName(e.target.value)}
+                     className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                   />
+                 </div>
+@@ -342,6 +273,8 @@ export default function App() {
+                 <input
+                   type="email"
+                   placeholder="you@example.com"
++                  value={authEmail}
++                  onChange={(e) => setAuthEmail(e.target.value)}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -353,6 +286,8 @@ export default function App() {
+                 <input
+                   type="password"
+                   placeholder="••••••••"
++                  value={authPassword}
++                  onChange={(e) => setAuthPassword(e.target.value)}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -376,7 +311,7 @@ export default function App() {
+               </div>
+             )}
+             <button
+-              onClick={() => setIsLoggedIn(true)}
++              onClick={handleAuth}
+               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
+             >
+               {authMode === 'login' ? 'Sign In' : 'Create Account'}
