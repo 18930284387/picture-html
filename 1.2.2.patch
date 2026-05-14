@@ -1,0 +1,77 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..4f97b3d 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -196,6 +196,38 @@ export default function App() {
+   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+   const [replyText, setReplyText] = useState('');
+ 
++  const [loginEmail, setLoginEmail] = useState('');
++  const [loginPassword, setLoginPassword] = useState('');
++  const [loginError, setLoginError] = useState('');
++
++  const validatePassword = (password: string): boolean => {
++    if (password.length < 6) return false;
++    const hasNumber = /\d/.test(password);
++    const hasLetter = /[a-zA-Z]/.test(password);
++    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
++    const typeCount = [hasNumber, hasLetter, hasSpecial].filter(Boolean).length;
++    return typeCount >= 2;
++  };
++
++  const validateLogin = () => {
++    if (!loginEmail.includes('@')) {
++      setLoginError('请输入有效的邮箱地址，账号中必须包含 @ 字符');
++      return false;
++    }
++    if (!validatePassword(loginPassword)) {
++      setLoginError('密码长度必须大于等于6位，且至少包含数字、字母、特殊字符中的两种类型');
++      return false;
++    }
++    setLoginError('');
++    return true;
++  };
++
++  const handleLogin = () => {
++    if (validateLogin()) {
++      setIsLoggedIn(true);
++    }
++  };
++
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
+   const toggleLike = (photoId: number) => {
+@@ -342,6 +374,8 @@ export default function App() {
+                 <input
+                   type="email"
+                   placeholder="you@example.com"
++                  value={loginEmail}
++                  onChange={(e) => setLoginEmail(e.target.value)}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -353,6 +387,8 @@ export default function App() {
+                 <input
+                   type="password"
+                   placeholder="••••••••"
++                  value={loginPassword}
++                  onChange={(e) => setLoginPassword(e.target.value)}
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+               </div>
+@@ -376,11 +412,14 @@ export default function App() {
+               </div>
+             )}
+             <button
+-              onClick={() => setIsLoggedIn(true)}
++              onClick={handleLogin}
+               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
+             >
+               {authMode === 'login' ? 'Sign In' : 'Create Account'}
+             </button>
++            {loginError && (
++              <p className="mt-3 text-sm text-red-500 text-center">{loginError}</p>
++            )}
+           </div>
+ 
+           <div className="mt-6">
