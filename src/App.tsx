@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Home,
   Compass,
@@ -30,9 +30,10 @@ import {
   Grid3X3,
   ChevronDown
 } from 'lucide-react';
+import { getPhotos, uploadPhoto, likePhoto, unlikePhoto, addComment as apiAddComment, addReply as apiAddReply } from './api';
 
 interface Photo {
-  id: number;
+  id: string;
   url: string;
   title: string;
   author: string;
@@ -44,122 +45,13 @@ interface Photo {
 }
 
 interface Comment {
-  id: number;
+  id: string;
   user: string;
   avatar: string;
   text: string;
   likes: number;
   replies: Comment[];
 }
-
-const initialPhotos: Photo[] = [
-  {
-    id: 1,
-    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Mountain Sunrise',
-    author: 'Alex Chen',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 342,
-    comments: [
-      {
-        id: 1,
-        user: 'Sarah M.',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
-        text: 'Absolutely stunning! The colors are incredible.',
-        likes: 24,
-        replies: [
-          {
-            id: 2,
-            user: 'Alex Chen',
-            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-            text: 'Thank you! Shot at golden hour.',
-            likes: 8,
-            replies: []
-          }
-        ]
-      }
-    ],
-    tags: ['nature', 'mountains', 'sunrise'],
-    isLiked: false
-  },
-  {
-    id: 2,
-    url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Tokyo Nights',
-    author: 'Yuki Tanaka',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 567,
-    comments: [],
-    tags: ['urban', 'japan', 'night'],
-    isLiked: true
-  },
-  {
-    id: 3,
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=400&h=400',
-    title: 'Tropical Beach',
-    author: 'Maria Santos',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 891,
-    comments: [],
-    tags: ['beach', 'tropical', 'ocean'],
-    isLiked: false
-  },
-  {
-    id: 4,
-    url: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&q=80&w=400&h=550',
-    title: 'City Lights',
-    author: 'David Park',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 234,
-    comments: [],
-    tags: ['city', 'architecture', 'urban'],
-    isLiked: false
-  },
-  {
-    id: 5,
-    url: 'https://images.unsplash.com/photo-1518173946687-a4c036bc0a9a?auto=format&fit=crop&q=80&w=400&h=650',
-    title: 'Forest Path',
-    author: 'Emma Green',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 1234,
-    comments: [],
-    tags: ['forest', 'nature', 'hiking'],
-    isLiked: true
-  },
-  {
-    id: 6,
-    url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&q=80&w=400&h=450',
-    title: 'Aurora Dreams',
-    author: 'Lars Olsen',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 2341,
-    comments: [],
-    tags: ['aurora', 'night', 'northern'],
-    isLiked: false
-  },
-  {
-    id: 7,
-    url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Autumn Colors',
-    author: 'Chris Wong',
-    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 456,
-    comments: [],
-    tags: ['autumn', 'forest', 'colors'],
-    isLiked: false
-  },
-  {
-    id: 8,
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Portrait Study',
-    author: 'Jenny Liu',
-    avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 789,
-    comments: [],
-    tags: ['portrait', 'people', 'bw'],
-    isLiked: true
-  }
-];
 
 const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
 
@@ -170,7 +62,8 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
 
@@ -193,64 +86,88 @@ export default function App() {
   const [settingsBio, setSettingsBio] = useState('Photography enthusiast from San Francisco');
   const [settingsEmail, setSettingsEmail] = useState('alex@example.com');
   const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleLike = (photoId: number) => {
-    setPhotos(photos.map(p => {
-      if (p.id === photoId) {
-        return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        setLoading(true);
+        const data = await getPhotos();
+        setPhotos(data);
+      } catch (error) {
+        console.error('Failed to fetch photos:', error);
+      } finally {
+        setLoading(false);
       }
-      return p;
-    }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        isLiked: !selectedPhoto.isLiked,
-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
-      });
+    };
+
+    fetchPhotos();
+  }, []);
+
+  const toggleLike = async (photoId: string) => {
+    try {
+      const photo = photos.find(p => p.id === photoId);
+      if (!photo) return;
+
+      if (photo.isLiked) {
+        await unlikePhoto(photoId);
+      } else {
+        await likePhoto(photoId);
+      }
+
+      setPhotos(photos.map(p => {
+        if (p.id === photoId) {
+          return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
+        }
+        return p;
+      }));
+
+      if (selectedPhoto && selectedPhoto.id === photoId) {
+        setSelectedPhoto({
+          ...selectedPhoto,
+          isLiked: !selectedPhoto.isLiked,
+          likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
     }
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim() || !selectedPhoto) return;
-    const comment: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      text: newComment,
-      likes: 0,
-      replies: []
-    };
-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
-    setNewComment('');
+    try {
+      const comment = await apiAddComment(selectedPhoto.id, newComment);
+      const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
+      setSelectedPhoto(updatedPhoto);
+      setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+      setNewComment('');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
   };
 
-  const addReply = (commentId: number) => {
+  const addReply = async (commentId: string) => {
     if (!replyText.trim() || !selectedPhoto) return;
-    const reply: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      text: replyText,
-      likes: 0,
-      replies: []
-    };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
-      }
-      return c;
-    });
-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
-    setReplyText('');
-    setReplyingTo(null);
+    try {
+      const reply = await apiAddReply(commentId, replyText);
+      const updatedComments = selectedPhoto.comments.map(c => {
+        if (c.id === commentId) {
+          return { ...c, replies: [...c.replies, reply] };
+        }
+        return c;
+      });
+      const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
+      setSelectedPhoto(updatedPhoto);
+      setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+      setReplyText('');
+      setReplyingTo(null);
+    } catch (error) {
+      console.error('Failed to add reply:', error);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -273,24 +190,25 @@ export default function App() {
     }
   };
 
-  const handleUpload = () => {
-    if (!uploadPreview || !uploadTitle) return;
-    const newPhoto: Photo = {
-      id: Date.now(),
-      url: uploadPreview,
-      title: uploadTitle,
-      author: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      likes: 0,
-      comments: [],
-      tags: uploadTags.split(',').map(t => t.trim()),
-      isLiked: false
-    };
-    setPhotos([newPhoto, ...photos]);
-    setUploadPreview('');
-    setUploadTitle('');
-    setUploadTags('');
-    setCurrentPage('home');
+  const handleUpload = async () => {
+    if (!fileInputRef.current?.files?.[0] || !uploadTitle) return;
+    try {
+      const file = fileInputRef.current.files[0];
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('title', uploadTitle);
+      formData.append('tags', uploadTags);
+      formData.append('privacy', uploadPrivacy);
+
+      const newPhoto = await uploadPhoto(formData);
+      setPhotos([newPhoto, ...photos]);
+      setUploadPreview('');
+      setUploadTitle('');
+      setUploadTags('');
+      setCurrentPage('home');
+    } catch (error) {
+      console.error('Failed to upload photo:', error);
+    }
   };
 
   const filteredPhotos = photos.filter(photo =>
