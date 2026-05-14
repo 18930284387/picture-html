@@ -1,0 +1,73 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..69d9213 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -195,6 +195,35 @@ export default function App() {
+   const [newComment, setNewComment] = useState('');
+   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+   const [replyText, setReplyText] = useState('');
++  
++  const [loginEmail, setLoginEmail] = useState('');
++  const [loginPassword, setLoginPassword] = useState('');
++  const [loginError, setLoginError] = useState('');
++
++  const handleLogin = () => {
++    setLoginError('');
++    if (!loginEmail.includes('@')) {
++      setLoginError('Email must contain @ character');
++      return;
++    }
++    
++    if (loginPassword.length < 6) {
++      setLoginError('Password must be at least 6 characters long');
++      return;
++    }
++    
++    let typeCount = 0;
++    if (/[0-9]/.test(loginPassword)) typeCount++;
++    if (/[a-zA-Z]/.test(loginPassword)) typeCount++;
++    if (/[^a-zA-Z0-9]/.test(loginPassword)) typeCount++;
++    
++    if (typeCount < 2) {
++      setLoginError('Password must contain at least two types of characters: numbers, letters, or special characters');
++      return;
++    }
++
++    setIsLoggedIn(true);
++  };
+ 
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
+@@ -341,6 +370,8 @@ export default function App() {
+                 <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
+                 <input
+                   type="email"
++                  value={loginEmail}
++                  onChange={(e) => setLoginEmail(e.target.value)}
+                   placeholder="you@example.com"
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+@@ -352,6 +383,8 @@ export default function App() {
+                 <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${textSecondary}`} />
+                 <input
+                   type="password"
++                  value={loginPassword}
++                  onChange={(e) => setLoginPassword(e.target.value)}
+                   placeholder="••••••••"
+                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
+                 />
+@@ -375,8 +408,13 @@ export default function App() {
+                 <button className="text-sm text-teal-500 hover:text-teal-600">Forgot Password?</button>
+               </div>
+             )}
++            {loginError && (
++              <div className="text-red-500 text-sm font-medium text-center">
++                {loginError}
++              </div>
++            )}
+             <button
+-              onClick={() => setIsLoggedIn(true)}
++              onClick={handleLogin}
+               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
+             >
+               {authMode === 'login' ? 'Sign In' : 'Create Account'}
