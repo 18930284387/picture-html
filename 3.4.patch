@@ -1,0 +1,48 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..47eaf5d 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useRef } from 'react';
++import React, { useState, useRef, useEffect } from 'react';
+ import {
+   Home,
+   Compass,
+@@ -166,13 +166,35 @@ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food
+ export default function App() {
+   const [darkMode, setDarkMode] = useState(false);
+   const [currentPage, setCurrentPage] = useState('home');
+-  const [isLoggedIn, setIsLoggedIn] = useState(false);
++  
++  // 从 localStorage 读取 isLoggedIn 状态
++  const [isLoggedIn, setIsLoggedIn] = useState(() => {
++    const saved = localStorage.getItem('pixelhub_isLoggedIn');
++    return saved ? JSON.parse(saved) : false;
++  });
++  
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
++  
++  // 从 localStorage 读取 photos 状态
++  const [photos, setPhotos] = useState(() => {
++    const saved = localStorage.getItem('pixelhub_photos');
++    return saved ? JSON.parse(saved) : initialPhotos;
++  });
++  
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
++  
++  // 保存 isLoggedIn 到 localStorage
++  useEffect(() => {
++    localStorage.setItem('pixelhub_isLoggedIn', JSON.stringify(isLoggedIn));
++  }, [isLoggedIn]);
++  
++  // 保存 photos 到 localStorage
++  useEffect(() => {
++    localStorage.setItem('pixelhub_photos', JSON.stringify(photos));
++  }, [photos]);
+ 
+   const toggleFollow = (authorName: string) => {
+     setIsFollowing(prev => ({
