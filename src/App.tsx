@@ -169,6 +169,13 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
@@ -293,6 +300,47 @@ export default function App() {
     setCurrentPage('home');
   };
 
+  const isPasswordValid = (password: string) => {
+    if (password.length < 6) return false;
+
+    const types = [/[A-Za-z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
+
+    return types >= 2;
+  };
+
+  const handleAuthSubmit = () => {
+    const email = authMode === 'login' ? loginEmail.trim() : registerEmail.trim();
+    const password = authMode === 'login' ? loginPassword : registerPassword;
+
+    if (authMode === 'register' && !registerName.trim()) {
+      setLoginError('请输入姓名');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setLoginError('请输入包含 @ 的邮箱账号');
+      return;
+    }
+
+    if (!isPasswordValid(password)) {
+      setLoginError('密码至少 6 位，且需包含数字、字母、特殊字符中的至少两种');
+      return;
+    }
+
+    if (authMode === 'register' && password !== registerConfirmPassword) {
+      setLoginError('两次输入的密码不一致');
+      return;
+    }
+
+    setLoginError('');
+    setIsLoggedIn(true);
+  };
+
+  const handleAuthModeToggle = () => {
+    setAuthMode(authMode === 'login' ? 'register' : 'login');
+    setLoginError('');
+  };
+
   const filteredPhotos = photos.filter(photo =>
     activeCategory !== 'follows' || photo.author !== 'Alex Chen'
   );
@@ -330,6 +378,11 @@ export default function App() {
                   <input
                     type="text"
                     placeholder="John Doe"
+                    value={registerName}
+                    onChange={(e) => {
+                      setRegisterName(e.target.value);
+                      if (loginError) setLoginError('');
+                    }}
                     className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                   />
                 </div>
@@ -342,6 +395,16 @@ export default function App() {
                 <input
                   type="email"
                   placeholder="you@example.com"
+                  value={authMode === 'login' ? loginEmail : registerEmail}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (authMode === 'login') {
+                      setLoginEmail(value);
+                    } else {
+                      setRegisterEmail(value);
+                    }
+                    if (loginError) setLoginError('');
+                  }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                 />
               </div>
@@ -353,6 +416,16 @@ export default function App() {
                 <input
                   type="password"
                   placeholder="••••••••"
+                  value={authMode === 'login' ? loginPassword : registerPassword}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (authMode === 'login') {
+                      setLoginPassword(value);
+                    } else {
+                      setRegisterPassword(value);
+                    }
+                    if (loginError) setLoginError('');
+                  }}
                   className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                 />
               </div>
@@ -365,10 +438,18 @@ export default function App() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={registerConfirmPassword}
+                    onChange={(e) => {
+                      setRegisterConfirmPassword(e.target.value);
+                      if (loginError) setLoginError('');
+                    }}
                     className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} border ${textPrimary} focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all`}
                   />
                 </div>
               </div>
+            )}
+            {loginError && (
+              <p className="text-sm text-red-500">{loginError}</p>
             )}
             {authMode === 'login' && (
               <div className="flex justify-end">
@@ -376,7 +457,7 @@ export default function App() {
               </div>
             )}
             <button
-              onClick={() => setIsLoggedIn(true)}
+              onClick={handleAuthSubmit}
               className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/25"
             >
               {authMode === 'login' ? 'Sign In' : 'Create Account'}
@@ -418,7 +499,7 @@ export default function App() {
           <p className={`mt-8 text-center ${textSecondary}`}>
             {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
             <button
-              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              onClick={handleAuthModeToggle}
               className="text-teal-500 font-semibold hover:text-teal-400"
             >
               {authMode === 'login' ? 'Sign Up' : 'Sign In'}
