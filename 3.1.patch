@@ -1,0 +1,80 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..d10a25f 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useRef } from 'react';
++import React, { useEffect, useState, useRef } from 'react';
+ import {
+   Home,
+   Compass,
+@@ -163,14 +163,44 @@ const initialPhotos: Photo[] = [
+ 
+ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+ 
++const LOGIN_STORAGE_KEY = 'pixelhub:isLoggedIn';
++const PHOTOS_STORAGE_KEY = 'pixelhub:photos';
++
++const getStoredLoginState = () => {
++  if (typeof window === 'undefined') {
++    return false;
++  }
++
++  return window.localStorage.getItem(LOGIN_STORAGE_KEY) === 'true';
++};
++
++const getStoredPhotos = (): Photo[] => {
++  if (typeof window === 'undefined') {
++    return initialPhotos;
++  }
++
++  const storedPhotos = window.localStorage.getItem(PHOTOS_STORAGE_KEY);
++
++  if (!storedPhotos) {
++    return initialPhotos;
++  }
++
++  try {
++    const parsedPhotos = JSON.parse(storedPhotos);
++    return Array.isArray(parsedPhotos) ? parsedPhotos as Photo[] : initialPhotos;
++  } catch {
++    return initialPhotos;
++  }
++};
++
+ export default function App() {
+   const [darkMode, setDarkMode] = useState(false);
+   const [currentPage, setCurrentPage] = useState('home');
+-  const [isLoggedIn, setIsLoggedIn] = useState(false);
++  const [isLoggedIn, setIsLoggedIn] = useState(() => getStoredLoginState());
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
++  const [photos, setPhotos] = useState<Photo[]>(() => getStoredPhotos());
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+ 
+@@ -198,6 +228,22 @@ export default function App() {
+ 
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
++  useEffect(() => {
++    if (typeof window === 'undefined') {
++      return;
++    }
++
++    window.localStorage.setItem(LOGIN_STORAGE_KEY, String(isLoggedIn));
++  }, [isLoggedIn]);
++
++  useEffect(() => {
++    if (typeof window === 'undefined') {
++      return;
++    }
++
++    window.localStorage.setItem(PHOTOS_STORAGE_KEY, JSON.stringify(photos));
++  }, [photos]);
++
+   const toggleLike = (photoId: number) => {
+     setPhotos(photos.map(p => {
+       if (p.id === photoId) {
