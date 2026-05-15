@@ -11,5 +11,8 @@ export default defineConfig({
   preview: {
     port: 27823,            // 预览端口保持默认，可按需改为随机
     strictPort: false
+  },
+  build: {
+    outDir: 'dist'
   }
 })
