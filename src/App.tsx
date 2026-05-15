@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import axios from 'axios';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Home,
   Compass,
@@ -31,20 +32,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 
-interface Photo {
-  id: number;
-  url: string;
-  title: string;
-  author: string;
-  avatar: string;
-  likes: number;
-  comments: Comment[];
-  tags: string[];
-  isLiked: boolean;
-}
-
 interface Comment {
-  id: number;
+  id: string;
   user: string;
   avatar: string;
   text: string;
@@ -52,116 +41,71 @@ interface Comment {
   replies: Comment[];
 }
 
-const initialPhotos: Photo[] = [
-  {
-    id: 1,
-    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Mountain Sunrise',
-    author: 'Alex Chen',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 342,
-    comments: [
-      {
-        id: 1,
-        user: 'Sarah M.',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
-        text: 'Absolutely stunning! The colors are incredible.',
-        likes: 24,
-        replies: [
-          {
-            id: 2,
-            user: 'Alex Chen',
-            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-            text: 'Thank you! Shot at golden hour.',
-            likes: 8,
-            replies: []
-          }
-        ]
-      }
-    ],
-    tags: ['nature', 'mountains', 'sunrise'],
-    isLiked: false
-  },
-  {
-    id: 2,
-    url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Tokyo Nights',
-    author: 'Yuki Tanaka',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 567,
-    comments: [],
-    tags: ['urban', 'japan', 'night'],
-    isLiked: true
-  },
-  {
-    id: 3,
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=400&h=400',
-    title: 'Tropical Beach',
-    author: 'Maria Santos',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 891,
-    comments: [],
-    tags: ['beach', 'tropical', 'ocean'],
-    isLiked: false
-  },
-  {
-    id: 4,
-    url: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&q=80&w=400&h=550',
-    title: 'City Lights',
-    author: 'David Park',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 234,
-    comments: [],
-    tags: ['city', 'architecture', 'urban'],
-    isLiked: false
-  },
-  {
-    id: 5,
-    url: 'https://images.unsplash.com/photo-1518173946687-a4c036bc0a9a?auto=format&fit=crop&q=80&w=400&h=650',
-    title: 'Forest Path',
-    author: 'Emma Green',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 1234,
-    comments: [],
-    tags: ['forest', 'nature', 'hiking'],
-    isLiked: true
-  },
-  {
-    id: 6,
-    url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&q=80&w=400&h=450',
-    title: 'Aurora Dreams',
-    author: 'Lars Olsen',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 2341,
-    comments: [],
-    tags: ['aurora', 'night', 'northern'],
-    isLiked: false
-  },
-  {
-    id: 7,
-    url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80&w=400&h=500',
-    title: 'Autumn Colors',
-    author: 'Chris Wong',
-    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 456,
-    comments: [],
-    tags: ['autumn', 'forest', 'colors'],
-    isLiked: false
-  },
-  {
-    id: 8,
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=600',
-    title: 'Portrait Study',
-    author: 'Jenny Liu',
-    avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&q=80&w=100&h=100',
-    likes: 789,
-    comments: [],
-    tags: ['portrait', 'people', 'bw'],
-    isLiked: true
-  }
-];
+interface Photo {
+  id: string;
+  url: string;
+  title: string;
+  author: string;
+  avatar: string;
+  likes: number;
+  comments: Comment[];
+  commentsCount: number;
+  tags: string[];
+  isLiked: boolean;
+}
+
+interface ApiUser {
+  id: string;
+  name: string;
+  avatar: string;
+}
+
+interface ApiComment {
+  id: string;
+  content: string;
+  likes: number;
+  author: ApiUser;
+  replies: ApiComment[];
+}
+
+interface ApiPhoto {
+  id: string;
+  title: string;
+  imageUrl: string;
+  tags: string[];
+  likes: number;
+  commentsCount: number;
+  author: ApiUser;
+  comments: ApiComment[];
+}
 
 const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+const currentUser = {
+  name: 'Alex Chen',
+  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100'
+};
+
+const mapComment = (comment: ApiComment): Comment => ({
+  id: comment.id,
+  user: comment.author.name,
+  avatar: comment.author.avatar,
+  text: comment.content,
+  likes: comment.likes,
+  replies: comment.replies.map(mapComment)
+});
+
+const mapPhoto = (photo: ApiPhoto): Photo => ({
+  id: photo.id,
+  url: photo.imageUrl,
+  title: photo.title,
+  author: photo.author.name,
+  avatar: photo.author.avatar,
+  likes: photo.likes,
+  comments: photo.comments.map(mapComment),
+  commentsCount: photo.commentsCount,
+  tags: photo.tags,
+  isLiked: false
+});
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -170,12 +114,14 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
-  const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+  const [isFollowing, setIsFollowing] = useState<Record<string, boolean>>({});
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(true);
+  const [photosError, setPhotosError] = useState('');
 
   const toggleFollow = (authorName: string) => {
-    setIsFollowing(prev => ({
+    setIsFollowing((prev: Record<string, boolean>) => ({
       ...prev,
       [authorName]: !prev[authorName]
     }));
@@ -185,72 +131,135 @@ export default function App() {
   
   const [uploadDrag, setUploadDrag] = useState(false);
   const [uploadPreview, setUploadPreview] = useState('');
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadTags, setUploadTags] = useState('');
   const [uploadPrivacy, setUploadPrivacy] = useState<'public' | 'followers' | 'private'>('public');
   
-  const [settingsName, setSettingsName] = useState('Alex Chen');
+  const [settingsName, setSettingsName] = useState(currentUser.name);
   const [settingsBio, setSettingsBio] = useState('Photography enthusiast from San Francisco');
   const [settingsEmail, setSettingsEmail] = useState('alex@example.com');
   const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleLike = (photoId: number) => {
-    setPhotos(photos.map(p => {
-      if (p.id === photoId) {
-        return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
-      }
-      return p;
-    }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        isLiked: !selectedPhoto.isLiked,
-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
-      });
+  const loadPhotos = async () => {
+    setIsLoadingPhotos(true);
+    setPhotosError('');
+
+    try {
+      const response = await axios.get<{ data: ApiPhoto[] }>('/api/photos');
+      const nextPhotos = response.data.data.map(mapPhoto);
+      setPhotos(nextPhotos);
+      setSelectedPhoto(current => current ? nextPhotos.find(photo => photo.id === current.id) ?? current : null);
+    } catch (error) {
+      setPhotosError('无法加载图片列表，请确认后端服务与 MongoDB 已启动。');
+      console.error(error);
+    } finally {
+      setIsLoadingPhotos(false);
     }
+  };
+
+  useEffect(() => {
+    loadPhotos();
+  }, []);
+
+  const toggleLike = (photoId: string) => {
+    setPhotos(prevPhotos => prevPhotos.map(photo => {
+      if (photo.id === photoId) {
+        return {
+          ...photo,
+          isLiked: !photo.isLiked,
+          likes: photo.isLiked ? photo.likes - 1 : photo.likes + 1
+        };
+      }
+      return photo;
+    }));
+
+    setSelectedPhoto(prevSelectedPhoto => {
+      if (!prevSelectedPhoto || prevSelectedPhoto.id !== photoId) {
+        return prevSelectedPhoto;
+      }
+
+      return {
+        ...prevSelectedPhoto,
+        isLiked: !prevSelectedPhoto.isLiked,
+        likes: prevSelectedPhoto.isLiked ? prevSelectedPhoto.likes - 1 : prevSelectedPhoto.likes + 1
+      };
+    });
   };
 
   const addComment = () => {
     if (!newComment.trim() || !selectedPhoto) return;
+
     const comment: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+      id: String(Date.now()),
+      user: currentUser.name,
+      avatar: currentUser.avatar,
       text: newComment,
       likes: 0,
       replies: []
     };
-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
+
+    const updatedPhoto = {
+      ...selectedPhoto,
+      comments: [...selectedPhoto.comments, comment],
+      commentsCount: selectedPhoto.commentsCount + 1
+    };
+
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(prevPhotos => prevPhotos.map(photo => photo.id === selectedPhoto.id ? updatedPhoto : photo));
     setNewComment('');
   };
 
-  const addReply = (commentId: number) => {
+  const addReply = (commentId: string) => {
     if (!replyText.trim() || !selectedPhoto) return;
+
     const reply: Comment = {
-      id: Date.now(),
-      user: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+      id: String(Date.now()),
+      user: currentUser.name,
+      avatar: currentUser.avatar,
       text: replyText,
       likes: 0,
       replies: []
     };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
+
+    const updatedComments = selectedPhoto.comments.map(comment => {
+      if (comment.id === commentId) {
+        return {
+          ...comment,
+          replies: [...comment.replies, reply]
+        };
       }
-      return c;
+      return comment;
     });
-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
+
+    const updatedPhoto = {
+      ...selectedPhoto,
+      comments: updatedComments,
+      commentsCount: selectedPhoto.commentsCount + 1
+    };
+
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(prevPhotos => prevPhotos.map(photo => photo.id === selectedPhoto.id ? updatedPhoto : photo));
     setReplyText('');
     setReplyingTo(null);
+  };
+
+  const previewFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setUploadPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearUploadSelection = () => {
+    setSelectedUploadFile(null);
+    setUploadPreview('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -258,43 +267,51 @@ export default function App() {
     setUploadDrag(false);
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => setUploadPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      setSelectedUploadFile(file);
+      previewFile(file);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setUploadPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      setSelectedUploadFile(file);
+      previewFile(file);
     }
   };
 
-  const handleUpload = () => {
-    if (!uploadPreview || !uploadTitle) return;
-    const newPhoto: Photo = {
-      id: Date.now(),
-      url: uploadPreview,
-      title: uploadTitle,
-      author: 'Alex Chen',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-      likes: 0,
-      comments: [],
-      tags: uploadTags.split(',').map(t => t.trim()),
-      isLiked: false
-    };
-    setPhotos([newPhoto, ...photos]);
-    setUploadPreview('');
-    setUploadTitle('');
-    setUploadTags('');
-    setCurrentPage('home');
+  const handleUpload = async () => {
+    const file = fileInputRef.current?.files?.[0] ?? selectedUploadFile;
+    if (!file || !uploadTitle.trim()) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', uploadTitle.trim());
+    formData.append('tags', uploadTags);
+    formData.append('privacy', uploadPrivacy);
+
+    try {
+      const response = await axios.post<{ data: ApiPhoto }>('/api/photos', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      const nextPhoto = mapPhoto(response.data.data);
+      setPhotos(prevPhotos => [nextPhoto, ...prevPhotos]);
+      clearUploadSelection();
+      setUploadTitle('');
+      setUploadTags('');
+      setUploadPrivacy('public');
+      setCurrentPage('home');
+    } catch (error) {
+      console.error(error);
+      setPhotosError('上传失败，请稍后重试。');
+    }
   };
 
   const filteredPhotos = photos.filter(photo =>
-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+    activeCategory !== 'follows' || photo.author !== currentUser.name
   );
  
   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
@@ -493,7 +510,7 @@ export default function App() {
                 </button>
                 <div className="flex items-center gap-2">
                   <MessageCircle className={`w-7 h-7 ${textSecondary}`} />
-                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.comments.length}</span>
+                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.commentsCount}</span>
                 </div>
               </div>
             </div>
@@ -516,7 +533,7 @@ export default function App() {
           <div className={`mt-2 p-4 ${cardBg}`}>
             <h3 className={`font-semibold text-lg ${textPrimary} mb-6 flex items-center gap-2`}>
               <MessageCircle className="w-5 h-5" />
-              Comments ({selectedPhoto.comments.length})
+              Comments ({selectedPhoto.commentsCount})
             </h3>
 
             <div className="space-y-6">
@@ -639,7 +656,7 @@ export default function App() {
                   <img src={uploadPreview} alt="Preview" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setUploadPreview(''); }}
+                      onClick={(e) => { e.stopPropagation(); clearUploadSelection(); }}
                       className="p-3 bg-white/95 rounded-full shadow-lg transform hover:scale-110 transition-all"
                     >
                       <Trash2 className="w-6 h-6 text-gray-700" />
@@ -773,7 +790,7 @@ export default function App() {
                 </div>
               </div>
               <div className="flex-1 text-center sm:text-left w-full">
-                <h2 className={`text-3xl font-bold ${textPrimary}`}>Alex Chen</h2>
+                <h2 className={`text-3xl font-bold ${textPrimary}`}>{currentUser.name}</h2>
                 <p className={`text-lg mt-2 ${textSecondary}`}>@alexchen</p>
                 <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                   <span className="px-3 py-1 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 text-teal-700 dark:text-teal-400 text-xs rounded-full font-semibold">
@@ -866,7 +883,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -887,7 +904,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -913,7 +930,7 @@ export default function App() {
                           </span>
                           <span className="flex items-center gap-2 font-semibold text-lg">
                             <MessageCircle className="w-5 h-5" />
-                            {photo.comments.length}
+                            {photo.commentsCount}
                           </span>
                         </div>
                       </div>
@@ -1321,103 +1338,120 @@ export default function App() {
               </p>
             </div>
 
-            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-              {filteredPhotos.map((photo, idx) => (
-                <div
-                  key={photo.id}
-                  className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
-                  onClick={() => setSelectedPhoto(photo)}
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                >
-                  <div className="relative aspect-auto overflow-hidden">
-                    <img
-                      src={photo.url}
-                      alt={photo.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-4 left-4 right-4 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                            <img src={photo.avatar} alt={photo.author} className="w-full h-full object-cover" />
+            {photosError && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-600">
+                {photosError}
+              </div>
+            )}
+
+            {isLoadingPhotos ? (
+              <div className="text-center mt-12 py-8">
+                <div className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700">
+                  <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                  <span className={`font-semibold ${textSecondary}`}>正在同步真实图片数据...</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                  {filteredPhotos.map((photo, idx) => (
+                    <div
+                      key={photo.id}
+                      className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
+                      onClick={() => setSelectedPhoto(photo)}
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div className="relative aspect-auto overflow-hidden">
+                        <img
+                          src={photo.url}
+                          alt={photo.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute bottom-4 left-4 right-4 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+                                <img src={photo.avatar} alt={photo.author} className="w-full h-full object-cover" />
+                              </div>
+                              <span className="text-white font-semibold text-shadow">{photo.author}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author); }}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all shadow-lg transform hover:scale-110 ${
+                                  isFollowing[photo.author]
+                                    ? 'bg-gray-200 text-gray-800'
+                                    : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
+                                }`}
+                              >
+                                {isFollowing[photo.author] ? '✓' : '+'}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
+                                className="p-3 bg-white/90 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-110"
+                              >
+                                <Heart className={`w-6 h-6 transition-all ${photo.isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+                              </button>
+                            </div>
                           </div>
-                          <span className="text-white font-semibold text-shadow">{photo.author}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleFollow(photo.author); }}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all shadow-lg transform hover:scale-110 ${
-                              isFollowing[photo.author]
-                                ? 'bg-gray-200 text-gray-800'
-                                : 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
-                            }`}
-                          >
-                            {isFollowing[photo.author] ? '✓' : '+'}
-                          </button>
+                      </div>
+                      <div className={`p-5`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-bold text-xl ${textPrimary} truncate`}>{photo.title}</h3>
+                            <p className={`text-sm font-medium ${textSecondary} mt-1 flex items-center gap-1`}>
+                              <span className="w-2 h-2 bg-teal-500 rounded-full" />
+                              {photo.author}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {photo.tags.slice(0, 3).map(tag => (
+                                <span
+                                  key={tag}
+                                  className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                              {photo.tags.length > 3 && (
+                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
+                                  +{photo.tags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
-                            className="p-3 bg-white/90 rounded-full hover:bg-white transition-all shadow-lg transform hover:scale-110"
+                            className={`p-2 rounded-full transition-all transform hover:scale-110 ${photo.isLiked ? 'bg-red-50 dark:bg-red-950/30' : hoverBg}`}
                           >
-                            <Heart className={`w-6 h-6 transition-all ${photo.isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
+                            <Heart className={`w-6 h-6 transition-all duration-300 ${photo.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
                           </button>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`p-5`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-bold text-xl ${textPrimary} truncate`}>{photo.title}</h3>
-                        <p className={`text-sm font-medium ${textSecondary} mt-1 flex items-center gap-1`}>
-                          <span className="w-2 h-2 bg-teal-500 rounded-full" />
-                          {photo.author}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {photo.tags.slice(0, 3).map(tag => (
-                            <span
-                              key={tag}
-                              className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                          {photo.tags.length > 3 && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-                              +{photo.tags.length - 3}
-                            </span>
-                          )}
+                        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                          <div className="flex items-center gap-2">
+                            <Heart className={`w-4 h-4 ${textSecondary}`} />
+                            <span className={`text-sm font-semibold ${textSecondary}`}>{photo.likes.toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className={`w-4 h-4 ${textSecondary}`} />
+                            <span className={`text-sm font-semibold ${textSecondary}`}>{photo.commentsCount}</span>
+                          </div>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleLike(photo.id); }}
-                        className={`p-2 rounded-full transition-all transform hover:scale-110 ${photo.isLiked ? 'bg-red-50 dark:bg-red-950/30' : hoverBg}`}
-                      >
-                        <Heart className={`w-6 h-6 transition-all duration-300 ${photo.isLiked ? 'fill-red-500 text-red-500 scale-110' : textSecondary}`} />
-                      </button>
                     </div>
-                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                      <div className="flex items-center gap-2">
-                        <Heart className={`w-4 h-4 ${textSecondary}`} />
-                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.likes.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className={`w-4 h-4 ${textSecondary}`} />
-                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.comments.length}</span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <div className="text-center mt-12 py-8">
-              <div className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700">
-                <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                <span className={`font-semibold ${textSecondary}`}>Loading more amazing photos...</span>
-              </div>
-            </div>
+                {filteredPhotos.length === 0 && (
+                  <div className="text-center mt-12 py-16">
+                    <MessageCircle className={`w-14 h-14 mx-auto ${textSecondary} opacity-20 mb-4`} />
+                    <p className={`text-lg ${textSecondary}`}>当前没有可展示的图片</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </main>
       </div>
