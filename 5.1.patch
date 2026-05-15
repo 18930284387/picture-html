@@ -1,0 +1,609 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..4e6973c 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useRef } from 'react';
++import React, { useEffect, useMemo, useRef, useState } from 'react';
+ import {
+   Home,
+   Compass,
+@@ -162,6 +162,135 @@ const initialPhotos: Photo[] = [
+ ];
+ 
+ const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
++const currentUser = {
++  name: 'Alex Chen',
++  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100'
++};
++const maxVisibleReplyDepth = 3;
++
++const getCommentCount = (comments: Comment[]) => {
++  let count = 0;
++  const stack = [...comments];
++
++  while (stack.length > 0) {
++    const currentComment = stack.pop();
++
++    if (!currentComment) {
++      continue;
++    }
++
++    count += 1;
++
++    for (let index = currentComment.replies.length - 1; index >= 0; index -= 1) {
++      stack.push(currentComment.replies[index]);
++    }
++  }
++
++  return count;
++};
++
++const findCommentPath = (comments: Comment[], targetCommentId: number) => {
++  const stack = comments
++    .map((comment, index) => ({ comment, path: [index] }))
++    .reverse();
++
++  while (stack.length > 0) {
++    const currentNode = stack.pop();
++
++    if (!currentNode) {
++      continue;
++    }
++
++    if (currentNode.comment.id === targetCommentId) {
++      return currentNode.path;
++    }
++
++    for (let index = currentNode.comment.replies.length - 1; index >= 0; index -= 1) {
++      stack.push({
++        comment: currentNode.comment.replies[index],
++        path: [...currentNode.path, index]
++      });
++    }
++  }
++
++  return null;
++};
++
++const appendReplyToComments = (comments: Comment[], targetCommentId: number, reply: Comment) => {
++  const targetPath = findCommentPath(comments, targetCommentId);
++
++  if (!targetPath) {
++    return comments;
++  }
++
++  const nextComments = [...comments];
++  let currentLevel = nextComments;
++
++  for (let pathIndex = 0; pathIndex < targetPath.length - 1; pathIndex += 1) {
++    const currentIndex = targetPath[pathIndex];
++    currentLevel[currentIndex] = {
++      ...currentLevel[currentIndex],
++      replies: [...currentLevel[currentIndex].replies]
++    };
++    currentLevel = currentLevel[currentIndex].replies;
++  }
++
++  const targetIndex = targetPath[targetPath.length - 1];
++  currentLevel[targetIndex] = {
++    ...currentLevel[targetIndex],
++    replies: [...currentLevel[targetIndex].replies, reply]
++  };
++
++  return nextComments;
++};
++
++type VisibleReplyNode = {
++  comment: Comment;
++  actualDepth: number;
++  visualDepth: number;
++  canExpand: boolean;
++  hiddenReplyCount: number;
++};
++
++const flattenVisibleReplies = (replies: Comment[], expandedCommentIds: Set<number>): VisibleReplyNode[] => {
++  const visibleReplies: VisibleReplyNode[] = [];
++  const stack = replies
++    .map(reply => ({ comment: reply, depth: 1 }))
++    .reverse();
++
++  while (stack.length > 0) {
++    const currentNode = stack.pop();
++
++    if (!currentNode) {
++      continue;
++    }
++
++    const shouldCollapseChildren = currentNode.depth >= maxVisibleReplyDepth
++      && currentNode.comment.replies.length > 0
++      && !expandedCommentIds.has(currentNode.comment.id);
++
++    visibleReplies.push({
++      comment: currentNode.comment,
++      actualDepth: currentNode.depth,
++      visualDepth: Math.min(currentNode.depth, maxVisibleReplyDepth),
++      canExpand: shouldCollapseChildren,
++      hiddenReplyCount: shouldCollapseChildren ? getCommentCount(currentNode.comment.replies) : 0
++    });
++
++    if (currentNode.comment.replies.length === 0 || shouldCollapseChildren) {
++      continue;
++    }
++
++    for (let index = currentNode.comment.replies.length - 1; index >= 0; index -= 1) {
++      stack.push({
++        comment: currentNode.comment.replies[index],
++        depth: currentNode.depth + 1
++      });
++    }
++  }
++
++  return visibleReplies;
++};
+ 
+ export default function App() {
+   const [darkMode, setDarkMode] = useState(false);
+@@ -169,86 +298,111 @@ export default function App() {
+   const [isLoggedIn, setIsLoggedIn] = useState(false);
+   const [showSidebar, setShowSidebar] = useState(false);
+   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
++  const [selectedPhotoId, setSelectedPhotoId] = useState<number | null>(null);
+   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
+   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
+-
+-  const toggleFollow = (authorName: string) => {
+-    setIsFollowing(prev => ({
+-      ...prev,
+-      [authorName]: !prev[authorName]
+-    }));
+-  };
+   const [searchQuery, setSearchQuery] = useState('');
+   const [activeCategory, setActiveCategory] = useState('hot');
+-  
+   const [uploadDrag, setUploadDrag] = useState(false);
+   const [uploadPreview, setUploadPreview] = useState('');
+   const [uploadTitle, setUploadTitle] = useState('');
+   const [uploadTags, setUploadTags] = useState('');
+   const [uploadPrivacy, setUploadPrivacy] = useState<'public' | 'followers' | 'private'>('public');
+-  
+   const [settingsName, setSettingsName] = useState('Alex Chen');
+   const [settingsBio, setSettingsBio] = useState('Photography enthusiast from San Francisco');
+   const [settingsEmail, setSettingsEmail] = useState('alex@example.com');
+   const [newComment, setNewComment] = useState('');
+   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+   const [replyText, setReplyText] = useState('');
++  const [expandedReplyThreads, setExpandedReplyThreads] = useState<Set<number>>(new Set());
+ 
+   const fileInputRef = useRef<HTMLInputElement>(null);
+ 
++  const selectedPhoto = useMemo(
++    () => photos.find((photo: Photo) => photo.id === selectedPhotoId) ?? null,
++    [photos, selectedPhotoId]
++  );
++
++  useEffect(() => {
++    setReplyingTo(null);
++    setReplyText('');
++    setExpandedReplyThreads(new Set());
++  }, [selectedPhotoId]);
++
++  const toggleFollow = (authorName: string) => {
++    setIsFollowing((prev: { [key: string]: boolean }) => ({
++      ...prev,
++      [authorName]: !prev[authorName]
++    }));
++  };
++
++  const openPhoto = (photoId: number) => {
++    setSelectedPhotoId(photoId);
++  };
++
++  const updatePhotoById = (photoId: number, updater: (photo: Photo) => Photo) => {
++    setPhotos((previousPhotos: Photo[]) => previousPhotos.map((photo: Photo) => (
++      photo.id === photoId ? updater(photo) : photo
++    )));
++  };
++
+   const toggleLike = (photoId: number) => {
+-    setPhotos(photos.map(p => {
+-      if (p.id === photoId) {
+-        return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
+-      }
+-      return p;
++    updatePhotoById(photoId, photo => ({
++      ...photo,
++      isLiked: !photo.isLiked,
++      likes: photo.likes + (photo.isLiked ? -1 : 1)
+     }));
+-    if (selectedPhoto && selectedPhoto.id === photoId) {
+-      setSelectedPhoto({
+-        ...selectedPhoto,
+-        isLiked: !selectedPhoto.isLiked,
+-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
+-      });
+-    }
+   };
+ 
+   const addComment = () => {
+-    if (!newComment.trim() || !selectedPhoto) return;
++    const trimmedComment = newComment.trim();
++
++    if (!trimmedComment || selectedPhotoId === null) {
++      return;
++    }
++
+     const comment: Comment = {
+       id: Date.now(),
+-      user: 'Alex Chen',
+-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      text: newComment,
++      user: currentUser.name,
++      avatar: currentUser.avatar,
++      text: trimmedComment,
+       likes: 0,
+       replies: []
+     };
+-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
+-    setSelectedPhoto(updatedPhoto);
+-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
++
++    updatePhotoById(selectedPhotoId, photo => ({
++      ...photo,
++      comments: [...photo.comments, comment]
++    }));
+     setNewComment('');
+   };
+ 
+   const addReply = (commentId: number) => {
+-    if (!replyText.trim() || !selectedPhoto) return;
++    const trimmedReply = replyText.trim();
++
++    if (!trimmedReply || selectedPhotoId === null) {
++      return;
++    }
++
+     const reply: Comment = {
+       id: Date.now(),
+-      user: 'Alex Chen',
+-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
+-      text: replyText,
++      user: currentUser.name,
++      avatar: currentUser.avatar,
++      text: trimmedReply,
+       likes: 0,
+       replies: []
+     };
+-    const updatedComments = selectedPhoto.comments.map(c => {
+-      if (c.id === commentId) {
+-        return { ...c, replies: [...c.replies, reply] };
+-      }
+-      return c;
++
++    updatePhotoById(selectedPhotoId, photo => ({
++      ...photo,
++      comments: appendReplyToComments(photo.comments, commentId, reply)
++    }));
++    setExpandedReplyThreads((previousThreads: Set<number>) => {
++      const nextThreads = new Set(previousThreads);
++      nextThreads.add(commentId);
++      return nextThreads;
+     });
+-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
+-    setSelectedPhoto(updatedPhoto);
+-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+     setReplyText('');
+     setReplyingTo(null);
+   };
+@@ -279,22 +433,22 @@ export default function App() {
+       id: Date.now(),
+       url: uploadPreview,
+       title: uploadTitle,
+-      author: 'Alex Chen',
+-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
++      author: currentUser.name,
++      avatar: currentUser.avatar,
+       likes: 0,
+       comments: [],
+-      tags: uploadTags.split(',').map(t => t.trim()),
++      tags: uploadTags.split(',').map((tag: string) => tag.trim()).filter(Boolean),
+       isLiked: false
+     };
+-    setPhotos([newPhoto, ...photos]);
++    setPhotos((previousPhotos: Photo[]) => [newPhoto, ...previousPhotos]);
+     setUploadPreview('');
+     setUploadTitle('');
+     setUploadTags('');
+     setCurrentPage('home');
+   };
+ 
+-  const filteredPhotos = photos.filter(photo =>
+-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
++  const filteredPhotos = photos.filter((photo: Photo) =>
++    activeCategory !== 'follows' || photo.author !== currentUser.name
+   );
+  
+   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
+@@ -437,10 +591,12 @@ export default function App() {
+   }
+ 
+   if (selectedPhoto) {
++    const selectedPhotoCommentCount = getCommentCount(selectedPhoto.comments);
++
+     return (
+       <div className={`min-h-screen ${bg} flex flex-col`}>
+         <header className={`${cardBg} border-b ${borderColor} px-4 py-3 flex items-center justify-between sticky top-0 z-10`}>
+-          <button onClick={() => setSelectedPhoto(null)} className={`p-2 -mx-2 rounded-full ${hoverBg}`}>
++          <button onClick={() => setSelectedPhotoId(null)} className={`p-2 -mx-2 rounded-full ${hoverBg}`}>
+             <ChevronLeft className={`w-6 h-6 ${textPrimary}`} />
+           </button>
+           <h1 className={`font-semibold ${textPrimary}`}>{selectedPhoto.title}</h1>
+@@ -493,7 +649,7 @@ export default function App() {
+                 </button>
+                 <div className="flex items-center gap-2">
+                   <MessageCircle className={`w-7 h-7 ${textSecondary}`} />
+-                  <span className={`font-medium ${textSecondary}`}>{selectedPhoto.comments.length}</span>
++                  <span className={`font-medium ${textSecondary}`}>{selectedPhotoCommentCount}</span>
+                 </div>
+               </div>
+             </div>
+@@ -516,65 +672,116 @@ export default function App() {
+           <div className={`mt-2 p-4 ${cardBg}`}>
+             <h3 className={`font-semibold text-lg ${textPrimary} mb-6 flex items-center gap-2`}>
+               <MessageCircle className="w-5 h-5" />
+-              Comments ({selectedPhoto.comments.length})
++              Comments ({selectedPhotoCommentCount})
+             </h3>
+ 
+             <div className="space-y-6">
+-              {selectedPhoto.comments.map(comment => (
+-                <div key={comment.id} className="flex gap-4">
+-                  <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
+-                  <div className="flex-1">
+-                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
+-                      <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
+-                      <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
+-                    </div>
+-                    <div className="flex items-center gap-6 mt-2.5 ml-3">
+-                      <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
+-                        <ThumbsUp className="w-4 h-4 inline mr-1" />
+-                        {comment.likes}
+-                      </button>
+-                      <button
+-                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+-                        className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
+-                      >
+-                        Reply
+-                      </button>
+-                    </div>
++              {selectedPhoto.comments.map(comment => {
++                const visibleReplies = flattenVisibleReplies(comment.replies, expandedReplyThreads);
+ 
+-                    {comment.replies.length > 0 && (
+-                      <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+-                        {comment.replies.map(reply => (
+-                          <div key={reply.id} className="flex gap-3">
+-                            <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+-                            <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
+-                              <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
+-                              <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
+-                            </div>
+-                          </div>
+-                        ))}
++                return (
++                  <div key={comment.id} className="flex gap-4">
++                    <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
++                    <div className="flex-1">
++                      <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
++                        <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
++                        <p className={`mt-1.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${textPrimary}`}>{comment.text}</p>
+                       </div>
+-                    )}
+-
+-                    {replyingTo === comment.id && (
+-                      <div className="flex gap-3 mt-3">
+-                        <input
+-                          type="text"
+-                          value={replyText}
+-                          onChange={e => setReplyText(e.target.value)}
+-                          placeholder="Write a reply..."
+-                          className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
+-                        />
++                      <div className="flex items-center gap-6 mt-2.5 ml-3">
++                        <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
++                          <ThumbsUp className="w-4 h-4 inline mr-1" />
++                          {comment.likes}
++                        </button>
+                         <button
+-                          onClick={() => addReply(comment.id)}
+-                          className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
++                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
++                          className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
+                         >
+-                          <Send className="w-4.5 h-4.5" />
++                          {replyingTo === comment.id ? 'Cancel' : 'Reply'}
+                         </button>
+                       </div>
+-                    )}
++
++                      {replyingTo === comment.id && (
++                        <div className="flex gap-3 mt-3">
++                          <input
++                            type="text"
++                            value={replyText}
++                            onChange={e => setReplyText(e.target.value)}
++                            placeholder="Write a reply..."
++                            className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
++                          />
++                          <button
++                            onClick={() => addReply(comment.id)}
++                            className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
++                          >
++                            <Send className="w-4.5 h-4.5" />
++                          </button>
++                        </div>
++                      )}
++
++                      {visibleReplies.length > 0 && (
++                        <div className="mt-4 space-y-4">
++                          {visibleReplies.map(replyNode => (
++                            <div key={replyNode.comment.id} style={{ marginLeft: `${replyNode.visualDepth * 16}px` }}>
++                              <div className="flex gap-3 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
++                                <img src={replyNode.comment.avatar} alt={replyNode.comment.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
++                                <div className="flex-1">
++                                  <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2`}>
++                                    <p className={`font-semibold text-sm ${textPrimary}`}>{replyNode.comment.user}</p>
++                                    <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${textPrimary}`}>{replyNode.comment.text}</p>
++                                  </div>
++                                  <div className="flex items-center gap-6 mt-2.5 ml-3">
++                                    <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
++                                      <ThumbsUp className="w-4 h-4 inline mr-1" />
++                                      {replyNode.comment.likes}
++                                    </button>
++                                    <button
++                                      onClick={() => setReplyingTo(replyingTo === replyNode.comment.id ? null : replyNode.comment.id)}
++                                      className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
++                                    >
++                                      {replyingTo === replyNode.comment.id ? 'Cancel' : 'Reply'}
++                                    </button>
++                                  </div>
++                                  {replyNode.canExpand && (
++                                    <button
++                                      onClick={() => {
++                                        setExpandedReplyThreads((previousThreads: Set<number>) => {
++                                          const nextThreads = new Set(previousThreads);
++                                          nextThreads.add(replyNode.comment.id);
++                                          return nextThreads;
++                                        });
++                                      }}
++                                      className="mt-3 text-sm font-medium text-teal-500 hover:text-teal-400"
++                                    >
++                                      Expand {replyNode.hiddenReplyCount} more replies
++                                    </button>
++                                  )}
++                                  {replyingTo === replyNode.comment.id && (
++                                    <div className="flex gap-3 mt-3">
++                                      <input
++                                        type="text"
++                                        value={replyText}
++                                        onChange={e => setReplyText(e.target.value)}
++                                        placeholder="Write a reply..."
++                                        className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
++                                      />
++                                      <button
++                                        onClick={() => addReply(replyNode.comment.id)}
++                                        className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
++                                      >
++                                        <Send className="w-4.5 h-4.5" />
++                                      </button>
++                                    </div>
++                                  )}
++                                </div>
++                              </div>
++                            </div>
++                          ))}
++                        </div>
++                      )}
++                    </div>
+                   </div>
+-                </div>
+-              ))}
++                );
++              })}
+             </div>
+ 
+             {selectedPhoto.comments.length === 0 && (
+@@ -589,8 +796,8 @@ export default function App() {
+         <div className={`${cardBg} border-t ${borderColor} px-4 py-3`}>
+           <div className="flex gap-3 items-center">
+             <img
+-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100"
+-              alt="You"
++              src={currentUser.avatar}
++              alt={currentUser.name}
+               className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+             />
+             <input
+@@ -694,7 +901,7 @@ export default function App() {
+                       Popular: {trendingTags.slice(0, 5).map(tag => (
+                         <button
+                           key={tag}
+-                          onClick={() => setUploadTags(prev => prev ? prev + ', ' + tag : tag)}
++                          onClick={() => setUploadTags((previousValue: string) => previousValue ? previousValue + ', ' + tag : tag)}
+                           className="ml-2 px-2 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+                         >
+                           #{tag}
+@@ -855,7 +1062,7 @@ export default function App() {
+                     <div
+                       key={photo.id}
+                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
++                      onClick={() => openPhoto(photo.id)}
+                     >
+                       <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+@@ -866,7 +1073,7 @@ export default function App() {
+                           </span>
+                           <span className="flex items-center gap-2 font-semibold text-lg">
+                             <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
++                            {getCommentCount(photo.comments)}
+                           </span>
+                         </div>
+                       </div>
+@@ -876,7 +1083,7 @@ export default function App() {
+                     <div
+                       key={photo.id + 's'}
+                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
++                      onClick={() => openPhoto(photo.id)}
+                     >
+                       <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+@@ -887,7 +1094,7 @@ export default function App() {
+                           </span>
+                           <span className="flex items-center gap-2 font-semibold text-lg">
+                             <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
++                            {getCommentCount(photo.comments)}
+                           </span>
+                         </div>
+                       </div>
+@@ -902,7 +1109,7 @@ export default function App() {
+                     <div
+                       key={idx}
+                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
++                      onClick={() => openPhoto(photo.id)}
+                     >
+                       <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+@@ -913,7 +1120,7 @@ export default function App() {
+                           </span>
+                           <span className="flex items-center gap-2 font-semibold text-lg">
+                             <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
++                            {getCommentCount(photo.comments)}
+                           </span>
+                         </div>
+                       </div>
+@@ -1326,7 +1533,7 @@ export default function App() {
+                 <div
+                   key={photo.id}
+                   className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
+-                  onClick={() => setSelectedPhoto(photo)}
++                  onClick={() => openPhoto(photo.id)}
+                   style={{ animationDelay: `${idx * 0.1}s` }}
+                 >
+                   <div className="relative aspect-auto overflow-hidden">
+@@ -1404,7 +1611,7 @@ export default function App() {
+                       </div>
+                       <div className="flex items-center gap-2">
+                         <MessageCircle className={`w-4 h-4 ${textSecondary}`} />
+-                        <span className={`text-sm font-semibold ${textSecondary}`}>{photo.comments.length}</span>
++                        <span className={`text-sm font-semibold ${textSecondary}`}>{getCommentCount(photo.comments)}</span>
+                       </div>
+                     </div>
+                   </div>
