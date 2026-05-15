@@ -163,14 +163,138 @@ const initialPhotos: Photo[] = [
 
 const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
 
+const flattenReplies = (replies: Comment[]): Comment[] => {
+  return replies.reduce((acc, curr) => {
+    return [...acc, curr, ...flattenReplies(curr.replies || [])];
+  }, [] as Comment[]);
+};
+
+const CommentItem = ({
+  comment,
+  depth = 0,
+  darkMode,
+  textPrimary,
+  textSecondary,
+  inputBg,
+  replyingTo,
+  setReplyingTo,
+  replyText,
+  setReplyText,
+  addReply
+}: any) => {
+  const isFlat = depth >= 2;
+  const repliesToRender = isFlat ? flattenReplies(comment.replies || []) : (comment.replies || []);
+
+  return (
+    <div className="flex gap-4">
+      <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
+      <div className="flex-1">
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
+          <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
+          <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
+        </div>
+        <div className="flex items-center gap-6 mt-2.5 ml-3">
+          <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
+            <ThumbsUp className="w-4 h-4 inline mr-1" />
+            {comment.likes}
+          </button>
+          <button
+            onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+            className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
+          >
+            Reply
+          </button>
+        </div>
+
+        {replyingTo === comment.id && (
+          <div className="flex gap-3 mt-3 mb-3">
+            <input
+              type="text"
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              placeholder="Write a reply..."
+              className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
+            />
+            <button
+              onClick={() => addReply(comment.id)}
+              className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
+            >
+              <Send className="w-4.5 h-4.5" />
+            </button>
+          </div>
+        )}
+
+        {repliesToRender && repliesToRender.length > 0 && (
+          <div className={`mt-4 space-y-4 ${!isFlat ? 'border-l-2 border-gray-200 dark:border-gray-700 pl-4' : ''}`}>
+            {repliesToRender.map((reply: Comment) => 
+              isFlat ? (
+                <div key={reply.id} className="flex gap-3 mt-3">
+                  <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2`}>
+                      <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
+                      <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
+                    </div>
+                    <div className="flex items-center gap-6 mt-1 ml-2">
+                      <button
+                        onClick={() => setReplyingTo(replyingTo === reply.id ? null : reply.id)}
+                        className={`text-xs font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                    {replyingTo === reply.id && (
+                      <div className="flex gap-3 mt-2 mb-2">
+                        <input
+                          type="text"
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder="Write a reply..."
+                          className={`flex-1 px-4 py-2 rounded-full ${inputBg} border ${textPrimary} text-xs outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
+                        />
+                        <button
+                          onClick={() => addReply(reply.id)}
+                          className="p-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
+                        >
+                          <Send className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <CommentItem
+                  key={reply.id}
+                  comment={reply}
+                  depth={depth + 1}
+                  darkMode={darkMode}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  inputBg={inputBg}
+                  replyingTo={replyingTo}
+                  setReplyingTo={setReplyingTo}
+                  replyText={replyText}
+                  setReplyText={setReplyText}
+                  addReply={addReply}
+                />
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<number | null>(null);
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const selectedPhoto = photos.find(p => p.id === selectedPhotoId) || null;
   const [activeTab, setActiveTab] = useState<'posts' | 'favorites' | 'comments'>('posts');
   const [isFollowing, setIsFollowing] = useState<{ [key: string]: boolean }>({});
 
@@ -199,23 +323,16 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleLike = (photoId: number) => {
-    setPhotos(photos.map(p => {
+    setPhotos(prevPhotos => prevPhotos.map(p => {
       if (p.id === photoId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        isLiked: !selectedPhoto.isLiked,
-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
-      });
-    }
   };
 
   const addComment = () => {
-    if (!newComment.trim() || !selectedPhoto) return;
+    if (!newComment.trim() || !selectedPhotoId) return;
     const comment: Comment = {
       id: Date.now(),
       user: 'Alex Chen',
@@ -224,14 +341,18 @@ export default function App() {
       likes: 0,
       replies: []
     };
-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    
+    setPhotos(prevPhotos => prevPhotos.map(p => {
+      if (p.id === selectedPhotoId) {
+        return { ...p, comments: [...p.comments, comment] };
+      }
+      return p;
+    }));
     setNewComment('');
   };
 
   const addReply = (commentId: number) => {
-    if (!replyText.trim() || !selectedPhoto) return;
+    if (!replyText.trim() || !selectedPhotoId) return;
     const reply: Comment = {
       id: Date.now(),
       user: 'Alex Chen',
@@ -240,15 +361,26 @@ export default function App() {
       likes: 0,
       replies: []
     };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
+    
+    // Recursive function to add reply to the correct nested comment
+    const addReplyToComments = (comments: Comment[]): Comment[] => {
+      return comments.map(c => {
+        if (c.id === commentId) {
+          return { ...c, replies: [...c.replies, reply] };
+        }
+        if (c.replies && c.replies.length > 0) {
+          return { ...c, replies: addReplyToComments(c.replies) };
+        }
+        return c;
+      });
+    };
+
+    setPhotos(prevPhotos => prevPhotos.map(p => {
+      if (p.id === selectedPhotoId) {
+        return { ...p, comments: addReplyToComments(p.comments) };
       }
-      return c;
-    });
-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+      return p;
+    }));
     setReplyText('');
     setReplyingTo(null);
   };
@@ -286,7 +418,7 @@ export default function App() {
       tags: uploadTags.split(',').map(t => t.trim()),
       isLiked: false
     };
-    setPhotos([newPhoto, ...photos]);
+    setPhotos(prevPhotos => [newPhoto, ...prevPhotos]);
     setUploadPreview('');
     setUploadTitle('');
     setUploadTags('');
@@ -440,7 +572,7 @@ export default function App() {
     return (
       <div className={`min-h-screen ${bg} flex flex-col`}>
         <header className={`${cardBg} border-b ${borderColor} px-4 py-3 flex items-center justify-between sticky top-0 z-10`}>
-          <button onClick={() => setSelectedPhoto(null)} className={`p-2 -mx-2 rounded-full ${hoverBg}`}>
+          <button onClick={() => setSelectedPhotoId(null)} className={`p-2 -mx-2 rounded-full ${hoverBg}`}>
             <ChevronLeft className={`w-6 h-6 ${textPrimary}`} />
           </button>
           <h1 className={`font-semibold ${textPrimary}`}>{selectedPhoto.title}</h1>
@@ -521,59 +653,20 @@ export default function App() {
 
             <div className="space-y-6">
               {selectedPhoto.comments.map(comment => (
-                <div key={comment.id} className="flex gap-4">
-                  <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
-                      <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
-                      <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
-                    </div>
-                    <div className="flex items-center gap-6 mt-2.5 ml-3">
-                      <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
-                        <ThumbsUp className="w-4 h-4 inline mr-1" />
-                        {comment.likes}
-                      </button>
-                      <button
-                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                        className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
-                      >
-                        Reply
-                      </button>
-                    </div>
-
-                    {comment.replies.length > 0 && (
-                      <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {comment.replies.map(reply => (
-                          <div key={reply.id} className="flex gap-3">
-                            <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                            <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
-                              <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
-                              <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {replyingTo === comment.id && (
-                      <div className="flex gap-3 mt-3">
-                        <input
-                          type="text"
-                          value={replyText}
-                          onChange={e => setReplyText(e.target.value)}
-                          placeholder="Write a reply..."
-                          className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
-                        />
-                        <button
-                          onClick={() => addReply(comment.id)}
-                          className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
-                        >
-                          <Send className="w-4.5 h-4.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  depth={0}
+                  darkMode={darkMode}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  inputBg={inputBg}
+                  replyingTo={replyingTo}
+                  setReplyingTo={setReplyingTo}
+                  replyText={replyText}
+                  setReplyText={setReplyText}
+                  addReply={addReply}
+                />
               ))}
             </div>
 
@@ -855,7 +948,7 @@ export default function App() {
                     <div
                       key={photo.id}
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-                      onClick={() => setSelectedPhoto(photo)}
+                      onClick={() => setSelectedPhotoId(photo.id)}
                     >
                       <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
@@ -1326,7 +1419,7 @@ export default function App() {
                 <div
                   key={photo.id}
                   className={`break-inside-avoid group ${cardBg} rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2`}
-                  onClick={() => setSelectedPhoto(photo)}
+                  onClick={() => setSelectedPhotoId(photo.id)}
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <div className="relative aspect-auto overflow-hidden">
