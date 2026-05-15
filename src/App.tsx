@@ -52,6 +52,129 @@ interface Comment {
   replies: Comment[];
 }
 
+const flattenReplies = (comment: Comment): Comment[] => {
+  const result: Comment[] = [];
+  for (const reply of comment.replies) {
+    result.push(reply);
+    result.push(...flattenReplies(reply));
+  }
+  return result;
+};
+
+const CommentItem: React.FC<{
+  comment: Comment;
+  depth: number;
+  maxDepth: number;
+  replyingTo: number | null;
+  replyText: string;
+  onReplyTextChange: (text: string) => void;
+  onToggleReply: (id: number | null) => void;
+  onAddReply: (commentId: number) => void;
+  darkMode: boolean;
+  textPrimary: string;
+  textSecondary: string;
+  inputBg: string;
+}> = ({ comment, depth, maxDepth, replyingTo, replyText, onReplyTextChange, onToggleReply, onAddReply, darkMode, textPrimary, textSecondary, inputBg }) => {
+  const [showNested, setShowNested] = React.useState(false);
+  const isTooDeep = depth >= maxDepth;
+  const hasReplies = comment.replies.length > 0;
+
+  return (
+    <div className="flex gap-4">
+      <img src={comment.avatar} alt={comment.user} className={`${depth > 0 ? 'w-8 h-8' : 'w-10 h-10'} rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
+          <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
+          <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
+        </div>
+        <div className="flex items-center gap-6 mt-2.5 ml-3">
+          <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
+            <ThumbsUp className="w-4 h-4 inline mr-1" />
+            {comment.likes}
+          </button>
+          <button
+            onClick={() => onToggleReply(replyingTo === comment.id ? null : comment.id)}
+            className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
+          >
+            Reply
+          </button>
+        </div>
+
+        {replyingTo === comment.id && (
+          <div className="flex gap-3 mt-3">
+            <input
+              type="text"
+              value={replyText}
+              onChange={e => onReplyTextChange(e.target.value)}
+              placeholder="Write a reply..."
+              className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
+            />
+            <button
+              onClick={() => onAddReply(comment.id)}
+              className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
+            >
+              <Send className="w-4.5 h-4.5" />
+            </button>
+          </div>
+        )}
+
+        {hasReplies && !isTooDeep && (
+          <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+            {comment.replies.map(reply => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                depth={depth + 1}
+                maxDepth={maxDepth}
+                replyingTo={replyingTo}
+                replyText={replyText}
+                onReplyTextChange={onReplyTextChange}
+                onToggleReply={onToggleReply}
+                onAddReply={onAddReply}
+                darkMode={darkMode}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                inputBg={inputBg}
+              />
+            ))}
+          </div>
+        )}
+
+        {hasReplies && isTooDeep && (
+          <div className="mt-3 ml-4">
+            {!showNested ? (
+              <button
+                onClick={() => setShowNested(true)}
+                className={`text-sm font-medium text-teal-500 hover:text-teal-600 transition-colors`}
+              >
+                View {comment.replies.length + flattenReplies(comment).length} replies
+              </button>
+            ) : (
+              <div className="space-y-3 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                {flattenReplies(comment).map(reply => (
+                  <div key={reply.id} className="flex gap-3">
+                    <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
+                      <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
+                      <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowNested(false)}
+                  className={`text-sm font-medium text-teal-500 hover:text-teal-600 transition-colors`}
+                >
+                  Hide replies
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const initialPhotos: Photo[] = [
   {
     id: 1,
@@ -199,19 +322,18 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleLike = (photoId: number) => {
-    setPhotos(photos.map(p => {
+    setPhotos(prev => prev.map(p => {
       if (p.id === photoId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        isLiked: !selectedPhoto.isLiked,
-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
-      });
-    }
+    setSelectedPhoto(prev => {
+      if (prev && prev.id === photoId) {
+        return { ...prev, isLiked: !prev.isLiked, likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1 };
+      }
+      return prev;
+    });
   };
 
   const addComment = () => {
@@ -224,9 +346,12 @@ export default function App() {
       likes: 0,
       replies: []
     };
-    const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    const photoId = selectedPhoto.id;
+    setSelectedPhoto(prev => {
+      if (!prev) return prev;
+      return { ...prev, comments: [...prev.comments, comment] };
+    });
+    setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, comments: [...p.comments, comment] } : p));
     setNewComment('');
   };
 
@@ -240,15 +365,30 @@ export default function App() {
       likes: 0,
       replies: []
     };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
-      }
-      return c;
+    const photoId = selectedPhoto.id;
+
+    const addReplyToTree = (comments: Comment[]): Comment[] => {
+      return comments.map(c => {
+        if (c.id === commentId) {
+          return { ...c, replies: [...c.replies, reply] };
+        }
+        if (c.replies.length > 0) {
+          return { ...c, replies: addReplyToTree(c.replies) };
+        }
+        return c;
+      });
+    };
+
+    setSelectedPhoto(prev => {
+      if (!prev) return prev;
+      return { ...prev, comments: addReplyToTree(prev.comments) };
     });
-    const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
-    setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(prev => prev.map(p => {
+      if (p.id === photoId) {
+        return { ...p, comments: addReplyToTree(p.comments) };
+      }
+      return p;
+    }));
     setReplyText('');
     setReplyingTo(null);
   };
@@ -286,7 +426,7 @@ export default function App() {
       tags: uploadTags.split(',').map(t => t.trim()),
       isLiked: false
     };
-    setPhotos([newPhoto, ...photos]);
+    setPhotos(prev => [newPhoto, ...prev]);
     setUploadPreview('');
     setUploadTitle('');
     setUploadTags('');
@@ -521,59 +661,21 @@ export default function App() {
 
             <div className="space-y-6">
               {selectedPhoto.comments.map(comment => (
-                <div key={comment.id} className="flex gap-4">
-                  <img src={comment.avatar} alt={comment.user} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-5 py-3`}>
-                      <p className={`font-semibold text-sm ${textPrimary}`}>{comment.user}</p>
-                      <p className={`mt-1.5 text-sm leading-relaxed ${textPrimary}`}>{comment.text}</p>
-                    </div>
-                    <div className="flex items-center gap-6 mt-2.5 ml-3">
-                      <button className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}>
-                        <ThumbsUp className="w-4 h-4 inline mr-1" />
-                        {comment.likes}
-                      </button>
-                      <button
-                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                        className={`text-sm font-medium hover:text-teal-500 transition-colors ${textSecondary}`}
-                      >
-                        Reply
-                      </button>
-                    </div>
-
-                    {comment.replies.length > 0 && (
-                      <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {comment.replies.map(reply => (
-                          <div key={reply.id} className="flex gap-3">
-                            <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                            <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
-                              <p className={`font-semibold text-sm ${textPrimary}`}>{reply.user}</p>
-                              <p className={`text-sm ${textPrimary}`}>{reply.text}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {replyingTo === comment.id && (
-                      <div className="flex gap-3 mt-3">
-                        <input
-                          type="text"
-                          value={replyText}
-                          onChange={e => setReplyText(e.target.value)}
-                          placeholder="Write a reply..."
-                          className={`flex-1 px-4 py-2.5 rounded-full ${inputBg} border ${textPrimary} text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent`}
-                        />
-                        <button
-                          onClick={() => addReply(comment.id)}
-                          className="p-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full text-white hover:from-teal-600 hover:to-cyan-600 transition-all shadow-md"
-                        >
-                          <Send className="w-4.5 h-4.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  depth={0}
+                  maxDepth={3}
+                  replyingTo={replyingTo}
+                  replyText={replyText}
+                  onReplyTextChange={setReplyText}
+                  onToggleReply={(id) => setReplyingTo(id)}
+                  onAddReply={addReply}
+                  darkMode={darkMode}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  inputBg={inputBg}
+                />
               ))}
             </div>
 
