@@ -199,19 +199,16 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleLike = (photoId: number) => {
-    setPhotos(photos.map(p => {
+    setPhotos(prevPhotos => prevPhotos.map(p => {
       if (p.id === photoId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
-    if (selectedPhoto && selectedPhoto.id === photoId) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        isLiked: !selectedPhoto.isLiked,
-        likes: selectedPhoto.isLiked ? selectedPhoto.likes - 1 : selectedPhoto.likes + 1
-      });
-    }
+    setSelectedPhoto(prev => {
+      if (!prev || prev.id !== photoId) return prev;
+      return { ...prev, isLiked: !prev.isLiked, likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1 };
+    });
   };
 
   const addComment = () => {
@@ -226,7 +223,7 @@ export default function App() {
     };
     const updatedPhoto = { ...selectedPhoto, comments: [...selectedPhoto.comments, comment] };
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(prevPhotos => prevPhotos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
     setNewComment('');
   };
 
@@ -240,15 +237,23 @@ export default function App() {
       likes: 0,
       replies: []
     };
-    const updatedComments = selectedPhoto.comments.map(c => {
-      if (c.id === commentId) {
-        return { ...c, replies: [...c.replies, reply] };
-      }
-      return c;
-    });
+
+    const updateCommentWithReply = (comments: Comment[]): Comment[] => {
+      return comments.map(c => {
+        if (c.id === commentId) {
+          return { ...c, replies: [...c.replies, reply] };
+        }
+        if (c.replies.length > 0) {
+          return { ...c, replies: updateCommentWithReply(c.replies) };
+        }
+        return c;
+      });
+    };
+
+    const updatedComments = updateCommentWithReply(selectedPhoto.comments);
     const updatedPhoto = { ...selectedPhoto, comments: updatedComments };
     setSelectedPhoto(updatedPhoto);
-    setPhotos(photos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
+    setPhotos(prevPhotos => prevPhotos.map(p => p.id === selectedPhoto.id ? updatedPhoto : p));
     setReplyText('');
     setReplyingTo(null);
   };
@@ -543,7 +548,7 @@ export default function App() {
 
                     {comment.replies.length > 0 && (
                       <div className="mt-4 ml-4 space-y-4 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {comment.replies.map(reply => (
+                        {comment.replies.slice(0, 3).map(reply => (
                           <div key={reply.id} className="flex gap-3">
                             <img src={reply.avatar} alt={reply.user} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                             <div className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-2xl px-4 py-2 flex-1`}>
@@ -552,6 +557,11 @@ export default function App() {
                             </div>
                           </div>
                         ))}
+                        {comment.replies.length > 3 && (
+                          <button className={`text-sm font-medium text-teal-500 hover:text-teal-600 ml-8`}>
+                            View {comment.replies.length - 3} more replies
+                          </button>
+                        )}
                       </div>
                     )}
 
