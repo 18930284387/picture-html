@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:staging": "tsc && vite build --mode staging",
+    "build:production": "tsc && vite build --mode production",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ci:pipeline": "node scripts/ci-gate.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

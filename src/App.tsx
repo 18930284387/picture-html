@@ -1108,7 +1108,7 @@ export default function App() {
 
             <div className={`${cardBg} rounded-3xl p-6 shadow-xl text-center`}>
               <h3 className={`font-bold text-lg ${textPrimary}`}>PixelHub</h3>
-              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2</p>
+              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2{__APP_ENV__ !== 'production' ? ` (${__APP_ENV__})` : ''}</p>
               <p className={`text-xs ${textSecondary} mt-1`}>Built with ❤️ for photographers</p>
             </div>
           </div>

@@ -1,0 +1,95 @@
+diff --git a/package.json b/package.json
+index 22180b5..9195ef7 100755
+--- a/package.json
++++ b/package.json
+@@ -5,8 +5,11 @@
+   "scripts": {
+     "dev": "vite",
+     "build": "tsc && vite build",
++    "build:staging": "tsc && vite build --mode staging",
++    "build:production": "tsc && vite build --mode production",
+     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+-    "preview": "vite preview"
++    "preview": "vite preview",
++    "ci:pipeline": "node scripts/ci-gate.mjs"
+   },
+   "dependencies": {
+     "lucide-react": "^0.577.0",
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..88182c0 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1108,7 +1108,7 @@ export default function App() {
+ 
+             <div className={`${cardBg} rounded-3xl p-6 shadow-xl text-center`}>
+               <h3 className={`font-bold text-lg ${textPrimary}`}>PixelHub</h3>
+-              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2</p>
++              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2{__APP_ENV__ !== 'production' ? ` (${__APP_ENV__})` : ''}</p>
+               <p className={`text-xs ${textSecondary} mt-1`}>Built with ❤️ for photographers</p>
+             </div>
+           </div>
+diff --git a/vite.config.ts b/vite.config.ts
+index 40ae585..932de2d 100755
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,15 +1,48 @@
+-import { defineConfig } from 'vite'
++import { defineConfig, loadEnv } from 'vite'
+ import react from '@vitejs/plugin-react'
++
+ // https://vitejs.dev/config/
+-export default defineConfig({
+-  plugins: [react()],
+-  server: {
+-    port: 27823,   // 随机端口（由脚本生成）
+-    strictPort: false,     // 若被占用，Vite 会继续找下一个可用端口
+-    open: false
+-  },
+-  preview: {
+-    port: 27823,            // 预览端口保持默认，可按需改为随机
+-    strictPort: false
++export default defineConfig(({ mode }) => {
++  const env = loadEnv(mode, process.cwd(), '')
++  const isProduction = mode === 'production'
++  const isStaging = mode === 'staging'
++
++  return {
++    plugins: [react()],
++    define: {
++      __APP_ENV__: JSON.stringify(env.APP_ENV || mode),
++    },
++    build: {
++      sourcemap: !isProduction,
++      minify: isProduction ? 'terser' : 'esbuild',
++      terserOptions: isProduction
++        ? {
++            compress: {
++              drop_console: true,
++              drop_debugger: true,
++            },
++          }
++        : {},
++      rollupOptions: {
++        output: {
++          manualChunks: {
++            vendor: ['react', 'react-dom'],
++            lucide: ['lucide-react'],
++          },
++          chunkFileNames: 'assets/[name]-[hash].js',
++          entryFileNames: 'assets/[name]-[hash].js',
++          assetFileNames: 'assets/[name]-[hash].[ext]',
++        },
++      },
++    },
++    server: {
++      port: 27823,
++      strictPort: false,
++      open: false,
++    },
++    preview: {
++      port: 4173,
++      strictPort: false,
++    },
+   }
+ })
+\ No newline at end of file
