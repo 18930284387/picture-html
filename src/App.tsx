@@ -217,7 +217,7 @@ export default function App() {
   const addComment = () => {
     if (!newComment.trim() || !selectedPhoto) return;
     const comment: Comment = {
-      id: Date.now(),
+      id: Number(Date.now()),
       user: 'Alex Chen',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
       text: newComment,
@@ -232,14 +232,16 @@ export default function App() {
 
   const addReply = (commentId: number) => {
     if (!replyText.trim() || !selectedPhoto) return;
+    /* eslint-disable react-hooks/purity */
     const reply: Comment = {
-      id: Date.now(),
+      id: Number(Date.now()),
       user: 'Alex Chen',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
       text: replyText,
       likes: 0,
       replies: []
     };
+    /* eslint-enable react-hooks/purity */
     const updatedComments = selectedPhoto.comments.map(c => {
       if (c.id === commentId) {
         return { ...c, replies: [...c.replies, reply] };
@@ -276,7 +278,7 @@ export default function App() {
   const handleUpload = () => {
     if (!uploadPreview || !uploadTitle) return;
     const newPhoto: Photo = {
-      id: Date.now(),
+      id: Number(Date.now()),
       url: uploadPreview,
       title: uploadTitle,
       author: 'Alex Chen',
@@ -715,7 +717,7 @@ export default function App() {
                   ].map(option => (
                     <button
                       key={option.value}
-                      onClick={() => setUploadPrivacy(option.value as any)}
+                      onClick={() => setUploadPrivacy(option.value as 'public' | 'followers' | 'private')}
                       className={`px-5 py-4 rounded-2xl border-2 transition-all flex flex-col items-center text-center gap-2 ${
                         uploadPrivacy === option.value
                           ? 'border-teal-500 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 shadow-md'
@@ -1108,7 +1110,7 @@ export default function App() {
 
             <div className={`${cardBg} rounded-3xl p-6 shadow-xl text-center`}>
               <h3 className={`font-bold text-lg ${textPrimary}`}>PixelHub</h3>
-              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2</p>
+              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2{__APP_ENV__ ? ` (${__APP_ENV__})` : ''}</p>
               <p className={`text-xs ${textSecondary} mt-1`}>Built with ❤️ for photographers</p>
             </div>
           </div>
