@@ -162,6 +162,9 @@ const initialPhotos: Photo[] = [
 ];
 
 const trendingTags = ['nature', 'urban', 'portrait', 'abstract', 'travel', 'food', 'animals', 'blackandwhite'];
+const appVersion = import.meta.env.VITE_APP_VERSION || '3.0.2';
+const appEnv = import.meta.env.VITE_APP_ENV || 'development';
+const versionLabel = `Version ${appVersion}${appEnv ? ` (${appEnv})` : ''}`;
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -1108,7 +1111,7 @@ export default function App() {
 
             <div className={`${cardBg} rounded-3xl p-6 shadow-xl text-center`}>
               <h3 className={`font-bold text-lg ${textPrimary}`}>PixelHub</h3>
-              <p className={`text-sm ${textSecondary} mt-2`}>Version 3.0.2</p>
+              <p className={`text-sm ${textSecondary} mt-2`}>{versionLabel}</p>
               <p className={`text-xs ${textSecondary} mt-1`}>Built with ❤️ for photographers</p>
             </div>
           </div>
