@@ -1,15 +1,45 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 27823,   // 随机端口（由脚本生成）
-    strictPort: false,     // 若被占用，Vite 会继续找下一个可用端口
-    open: false
-  },
-  preview: {
-    port: 27823,            // 预览端口保持默认，可按需改为随机
-    strictPort: false
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  const isProduction = mode === 'production'
+
+  return {
+    plugins: [react()],
+    server: {
+      port: 27823,
+      strictPort: false,
+      open: false
+    },
+    preview: {
+      port: 4173,
+      strictPort: false
+    },
+    define: {
+      __APP_ENV__: JSON.stringify(env.VITE_APP_ENV || mode),
+      __APP_VERSION__: JSON.stringify(env.VITE_APP_VERSION || '3.0.2'),
+    },
+    build: {
+      sourcemap: !isProduction,
+      minify: isProduction ? 'terser' : 'esbuild',
+      terserOptions: isProduction
+        ? {
+            compress: {
+              drop_console: true,
+              drop_debugger: true,
+            },
+          }
+        : undefined,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-lucide': ['lucide-react'],
+          },
+        },
+      },
+    },
   }
 })

@@ -25,6 +25,12 @@
   "include": [
     "src"
   ],
+  "exclude": [
+    "dist",
+    "artifacts",
+    "scripts",
+    "screenshot.cjs"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"
