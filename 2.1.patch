@@ -1,0 +1,221 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9601cbd..6dbe9fd 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -293,9 +293,42 @@ export default function App() {
+     setCurrentPage('home');
+   };
+ 
+-  const filteredPhotos = photos.filter(photo =>
+-    activeCategory !== 'follows' || photo.author !== 'Alex Chen'
+-  );
++  // 过滤照片：按搜索和分类
++  const filteredPhotos = photos
++    // 先按分类过滤
++    .filter(photo => {
++      if (activeCategory === 'follows') {
++        return isFollowing[photo.author] === true;
++      }
++      // 其他分类都显示所有
++      return true;
++    })
++    // 然后按搜索过滤
++    .filter(photo => {
++      if (!searchQuery.trim()) {
++        return true;
++      }
++      const lowerQuery = searchQuery.toLowerCase();
++      return (
++        photo.title.toLowerCase().includes(lowerQuery) ||
++        photo.author.toLowerCase().includes(lowerQuery) ||
++        photo.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
++      );
++    })
++    // 最后排序
++    .sort((a, b) => {
++      if (activeCategory === 'hot') {
++        // Hot：按点赞数+评论数排序
++        const scoreA = a.likes + a.comments.length * 10;
++        const scoreB = b.likes + b.comments.length * 10;
++        return scoreB - scoreA;
++      } else if (activeCategory === 'trending') {
++        // Trending：按点赞数排序
++        return b.likes - a.likes;
++      }
++      // 默认：保持原样（最新的在前面）
++      return 0;
++    });
+  
+   const bg = darkMode ? 'bg-gray-950' : 'bg-gray-50';
+   const textPrimary = darkMode ? 'text-white' : 'text-gray-900';
+@@ -746,7 +779,10 @@ export default function App() {
+   }
+ 
+   if (currentPage === 'profile') {
+-    const userPhotos = photos.slice(0, 6);
++    // 用户的照片（自己发布的）
++    const userPhotos = photos.filter(photo => photo.author === 'Alex Chen');
++    // 收藏的照片
++    const favoritePhotos = photos.filter(photo => photo.isLiked);
+     return (
+       <div className={`min-h-screen ${bg}`}>
+         <header className={`${cardBg} border-b ${borderColor} px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm`}>
+@@ -850,76 +886,69 @@ export default function App() {
+ 
+             <div className="p-6">
+               {activeTab === 'posts' && (
+-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+-                  {userPhotos.map(photo => (
+-                    <div
+-                      key={photo.id}
+-                      className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
+-                    >
+-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+-                        <div className="flex items-center gap-6 text-white">
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <Heart className="w-5 h-5 fill-current" />
+-                            {photo.likes}
+-                          </span>
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
+-                          </span>
+-                        </div>
+-                      </div>
+-                    </div>
+-                  ))}
+-                  {userPhotos.map(photo => (
+-                    <div
+-                      key={photo.id + 's'}
+-                      className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
+-                    >
+-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+-                        <div className="flex items-center gap-6 text-white">
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <Heart className="w-5 h-5 fill-current" />
+-                            {photo.likes}
+-                          </span>
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
+-                          </span>
++                userPhotos.length > 0 ? (
++                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
++                    {userPhotos.map(photo => (
++                      <div
++                        key={photo.id}
++                        className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
++                        onClick={() => setSelectedPhoto(photo)}
++                      >
++                        <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
++                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
++                          <div className="flex items-center gap-6 text-white">
++                            <span className="flex items-center gap-2 font-semibold text-lg">
++                              <Heart className="w-5 h-5 fill-current" />
++                              {photo.likes}
++                            </span>
++                            <span className="flex items-center gap-2 font-semibold text-lg">
++                              <MessageCircle className="w-5 h-5" />
++                              {photo.comments.length}
++                            </span>
++                          </div>
+                         </div>
+                       </div>
+-                    </div>
+-                  ))}
+-                </div>
++                    ))}
++                  </div>
++                ) : (
++                  <div className="text-center py-12">
++                    <Camera className={`w-16 h-16 mx-auto ${textSecondary} opacity-20 mb-4`} />
++                    <p className={`text-lg ${textSecondary}`}>No posts yet. Start creating!</p>
++                  </div>
++                )
+               )}
+ 
+               {activeTab === 'favorites' && (
+-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+-                  {userPhotos.slice(0, 3).concat(userPhotos.slice(0, 2)).map((photo, idx) => (
+-                    <div
+-                      key={idx}
+-                      className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+-                      onClick={() => setSelectedPhoto(photo)}
+-                    >
+-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+-                        <div className="flex items-center gap-6 text-white">
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <Heart className="w-5 h-5 fill-current" />
+-                            {photo.likes}
+-                          </span>
+-                          <span className="flex items-center gap-2 font-semibold text-lg">
+-                            <MessageCircle className="w-5 h-5" />
+-                            {photo.comments.length}
+-                          </span>
++                favoritePhotos.length > 0 ? (
++                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
++                    {favoritePhotos.map(photo => (
++                      <div
++                        key={photo.id}
++                        className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
++                        onClick={() => setSelectedPhoto(photo)}
++                      >
++                        <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
++                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
++                          <div className="flex items-center gap-6 text-white">
++                            <span className="flex items-center gap-2 font-semibold text-lg">
++                              <Heart className="w-5 h-5 fill-current" />
++                              {photo.likes}
++                            </span>
++                            <span className="flex items-center gap-2 font-semibold text-lg">
++                              <MessageCircle className="w-5 h-5" />
++                              {photo.comments.length}
++                            </span>
++                          </div>
+                         </div>
+                       </div>
+-                    </div>
+-                  ))}
+-                </div>
++                    ))}
++                  </div>
++                ) : (
++                  <div className="text-center py-12">
++                    <Heart className={`w-16 h-16 mx-auto ${textSecondary} opacity-20 mb-4`} />
++                    <p className={`text-lg ${textSecondary}`}>No saved photos yet. Start liking some!</p>
++                  </div>
++                )
+               )}
+ 
+               {activeTab === 'comments' && (
+@@ -1299,15 +1328,17 @@ export default function App() {
+ 
+         <main className="flex-1 overflow-auto pb-24 md:pb-6">
+           <div className={`sm:hidden flex items-center gap-3 px-4 py-4 overflow-x-auto ${cardBg} border-b ${borderColor}`}>
+-            <div className={`flex items-center max-w-md flex-1 px-4 py-3 rounded-2xl ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+-              <Search className={`w-5 h-5 ${textSecondary}`} />
+-              <input
+-                type="text"
+-                placeholder="Search..."
+-                className={`flex-1 bg-transparent ${textPrimary} outline-none ml-3 text-base placeholder-gray-400`}
+-              />
++              <div className={`flex items-center max-w-md flex-1 px-4 py-3 rounded-2xl ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
++                <Search className={`w-5 h-5 ${textSecondary}`} />
++                <input
++                  type="text"
++                  value={searchQuery}
++                  onChange={e => setSearchQuery(e.target.value)}
++                  placeholder="Search..."
++                  className={`flex-1 bg-transparent ${textPrimary} outline-none ml-3 text-base placeholder-gray-400`}
++                />
++              </div>
+             </div>
+-          </div>
+ 
+           <div className="p-6 md:p-8">
+             <div className="mb-8">
