@@ -41,6 +41,7 @@ interface Photo {
   comments: Comment[];
   tags: string[];
   isLiked: boolean;
+  filterClass?: string;
 }
 
 interface Comment {
@@ -188,6 +189,18 @@ export default function App() {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadTags, setUploadTags] = useState('');
   const [uploadPrivacy, setUploadPrivacy] = useState<'public' | 'followers' | 'private'>('public');
+  const [selectedFilter, setSelectedFilter] = useState('');
+
+  const filters = [
+    { id: '', name: '原图', class: '' },
+    { id: 'grayscale', name: '黑白', class: 'grayscale' },
+    { id: 'sepia', name: '复古', class: 'sepia' },
+    { id: 'invert', name: '反色', class: 'invert' },
+    { id: 'blur', name: '模糊', class: 'blur-sm' },
+    { id: 'contrast', name: '高对比', class: 'contrast-125' },
+    { id: 'brightness', name: '明亮', class: 'brightness-110' },
+    { id: 'saturate', name: '饱和', class: 'saturate-150' }
+  ];
   
   const [settingsName, setSettingsName] = useState('Alex Chen');
   const [settingsBio, setSettingsBio] = useState('Photography enthusiast from San Francisco');
@@ -284,12 +297,14 @@ export default function App() {
       likes: 0,
       comments: [],
       tags: uploadTags.split(',').map(t => t.trim()),
-      isLiked: false
+      isLiked: false,
+      filterClass: selectedFilter
     };
     setPhotos([newPhoto, ...photos]);
     setUploadPreview('');
     setUploadTitle('');
     setUploadTags('');
+    setSelectedFilter('');
     setCurrentPage('home');
   };
 
@@ -454,7 +469,7 @@ export default function App() {
             <img
               src={selectedPhoto.url}
               alt={selectedPhoto.title}
-              className="w-full h-full object-contain"
+              className={`w-full h-full object-contain ${selectedPhoto.filterClass || ''}`}
             />
           </div>
 
@@ -636,10 +651,10 @@ export default function App() {
             >
               {uploadPreview ? (
                 <div className="relative group w-full h-full">
-                  <img src={uploadPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={uploadPreview} alt="Preview" className={`w-full h-full object-cover ${selectedFilter}`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setUploadPreview(''); }}
+                      onClick={(e) => { e.stopPropagation(); setUploadPreview(''); setSelectedFilter(''); }}
                       className="p-3 bg-white/95 rounded-full shadow-lg transform hover:scale-110 transition-all"
                     >
                       <Trash2 className="w-6 h-6 text-gray-700" />
@@ -664,6 +679,36 @@ export default function App() {
                 className="hidden"
               />
             </div>
+
+            {uploadPreview && (
+              <div className="px-8 pt-6">
+                <label className={`block text-sm font-semibold ${textPrimary} mb-4`}>滤镜</label>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {filters.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setSelectedFilter(filter.class)}
+                      className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all duration-300 ${
+                        selectedFilter === filter.class
+                          ? 'border-teal-500 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/50 dark:to-cyan-950/50 shadow-md'
+                          : `${borderColor} ${hoverBg}`
+                      }`}
+                    >
+                      <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <img
+                          src={uploadPreview}
+                          alt={filter.name}
+                          className={`w-full h-full object-cover ${filter.class}`}
+                        />
+                      </div>
+                      <span className={`text-xs font-semibold ${selectedFilter === filter.class ? 'text-teal-600 dark:text-teal-400' : textSecondary}`}>
+                        {filter.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="p-8 space-y-6">
               <div>
@@ -857,7 +902,7 @@ export default function App() {
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <img src={photo.url} alt={photo.title} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${photo.filterClass || ''}`} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
                         <div className="flex items-center gap-6 text-white">
                           <span className="flex items-center gap-2 font-semibold text-lg">
@@ -878,7 +923,7 @@ export default function App() {
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <img src={photo.url} alt={photo.title} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${photo.filterClass || ''}`} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
                         <div className="flex items-center gap-6 text-white">
                           <span className="flex items-center gap-2 font-semibold text-lg">
@@ -904,7 +949,7 @@ export default function App() {
                       className="group relative aspect-square overflow-hidden rounded-2xl cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
                       onClick={() => setSelectedPhoto(photo)}
                     >
-                      <img src={photo.url} alt={photo.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <img src={photo.url} alt={photo.title} className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${photo.filterClass || ''}`} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
                         <div className="flex items-center gap-6 text-white">
                           <span className="flex items-center gap-2 font-semibold text-lg">
@@ -1333,7 +1378,7 @@ export default function App() {
                     <img
                       src={photo.url}
                       alt={photo.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${photo.filterClass || ''}`}
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
